@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "nlp-fm-agentic-project"
+version = "0.1.0"
+description = "Comparing agent architectures for the ELTE NLP course"
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+langgraph = "^0.0.30"
+langchain = "^0.1.12"
+python-dotenv = "^1.0.1"
+jupyter = "^1.0.0"
+pandas = "^2.2.1"
+matplotlib = "^3.8.3"
+openai = "^2.32.0"
+dotenv = "^0.9.9"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
