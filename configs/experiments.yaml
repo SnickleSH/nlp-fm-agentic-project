@@ -1,0 +1,22 @@
+experiments:
+  # Level 1 baseline
+  - architecture: level1
+    domain: gridworld
+    difficulty: easy
+    num_runs: 5
+
+  - architecture: level1
+    domain: gridworld
+    difficulty: hard
+    num_runs: 5
+
+  # Level 2A planner + executor
+  - architecture: level2a
+    domain: gridworld
+    difficulty: easy
+    num_runs: 5
+
+  - architecture: level2a
+    domain: gridworld
+    difficulty: hard
+    num_runs: 5
