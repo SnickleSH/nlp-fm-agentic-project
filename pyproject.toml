@@ -17,6 +17,7 @@ pandas = "^2.2"
 matplotlib = "^3.8"
 seaborn = "^0.13"
 jupyter = "^1.0.0"
+datasets = "^2.0"
 
 [build-system]
 requires = ["poetry-core"]
