@@ -20,3 +20,24 @@ experiments:
     domain: gridworld
     difficulty: hard
     num_runs: 5
+
+  # Logic puzzles
+  - architecture: level1
+    domain: logic_puzzles
+    difficulty: easy
+    num_runs: 5
+
+  - architecture: level1
+    domain: logic_puzzles
+    difficulty: hard
+    num_runs: 5
+
+  - architecture: level2a
+    domain: logic_puzzles
+    difficulty: easy
+    num_runs: 5
+
+  - architecture: level2a
+    domain: logic_puzzles
+    difficulty: hard
+    num_runs: 5

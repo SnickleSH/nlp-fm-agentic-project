@@ -61,12 +61,14 @@ class Level2APlannerExecutor(BaseArchitecture):
         response = self.llm.invoke(messages)
         plan = response.content
 
-        # Store plan in metadata and add to message history for executor
+        new_messages = [AIMessage(content=f"[PLAN]\n{plan}")]
+        if self.tools:
+            new_messages.append(
+                HumanMessage(content="Now execute this plan step by step using the available tools.")
+            )
+
         return {
-            "messages": [
-                AIMessage(content=f"[PLAN]\n{plan}"),
-                HumanMessage(content="Now execute this plan step by step using the available tools."),
-            ],
+            "messages": new_messages,
             "metadata": {**state.get("metadata", {}), "plan": plan},
         }
 
@@ -77,10 +79,27 @@ class Level2APlannerExecutor(BaseArchitecture):
     def _executor_simple_node(self, state: AgentState) -> dict:
         execution_prompt = (
             "You are a precise executor. Follow the plan provided and solve the task. "
-            "Provide your final answer clearly."
+            "Return only the final answer in the required format. "
+            "Do not restate the plan or the task."
         )
-        # Rebuild messages: system + original task + plan + execution instruction
-        messages = [SystemMessage(content=execution_prompt)] + list(state["messages"])
+
+        plan = state.get("metadata", {}).get("plan", "")
+        system_messages = [msg for msg in state["messages"] if isinstance(msg, SystemMessage)]
+        system_text = "\n\n".join(msg.content for msg in system_messages if msg.content)
+        combined_system = "\n\n".join(
+            part for part in [system_text, execution_prompt, f"Plan:\n{plan}".strip()] if part
+        )
+
+        task_message = next(
+            (msg for msg in state["messages"] if isinstance(msg, HumanMessage)),
+            None,
+        )
+        task_text = task_message.content if task_message else str(state.get("task", {}))
+
+        messages = [
+            SystemMessage(content=combined_system),
+            HumanMessage(content=task_text),
+        ]
         response = self.llm.invoke(messages)
         return {"messages": [response], "final_answer": response.content}
 

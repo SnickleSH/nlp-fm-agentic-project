@@ -7,8 +7,10 @@ DOMAINS: dict[str, type[BaseDomain]] = {}
 
 def _register_domains() -> None:
     from src.domains.gridworld.domain import GridworldDomain
+    from src.domains.logic_puzzles.domain import LogicPuzzlesDomain
 
     DOMAINS["gridworld"] = GridworldDomain
+    DOMAINS["logic_puzzles"] = LogicPuzzlesDomain
 
 
 _register_domains()
