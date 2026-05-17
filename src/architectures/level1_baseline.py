@@ -3,10 +3,7 @@ from __future__ import annotations
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
-try:
-    from langgraph.prebuilt import ToolNode
-except ImportError:  # pragma: no cover - fallback for newer langgraph layouts
-    from langgraph.prebuilt.tool_node import ToolNode
+from langgraph.prebuilt import ToolNode
 
 from src.architectures.base import BaseArchitecture
 from src.config import ExperimentConfig
