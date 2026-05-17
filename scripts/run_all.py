@@ -13,9 +13,15 @@ def main() -> None:
     parser.add_argument("--config", default="configs/experiments.yaml")
     parser.add_argument("--num-tasks", type=int, default=3, help="Number of tasks per condition")
     parser.add_argument("--output", default="results/results.jsonl")
+    parser.add_argument("--domain", default=None, help="Only run configs for this domain (e.g. logic_puzzles)")
+    parser.add_argument("--architecture", default=None, help="Only run configs for this architecture (e.g. level1)")
     args = parser.parse_args()
 
     configs = load_experiment_configs(args.config)
+    if args.domain:
+        configs = [c for c in configs if c.domain == args.domain]
+    if args.architecture:
+        configs = [c for c in configs if c.architecture == args.architecture]
     print(f"Loaded {len(configs)} experiment conditions from {args.config}")
 
     for i, config in enumerate(configs, 1):

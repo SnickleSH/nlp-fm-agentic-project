@@ -212,6 +212,28 @@ All architectures are evaluated across all domains at both difficulty levels, wi
 | *Member 1* | ... |
 | *Member 2* | ... |
 
+## Collaboration & Ownership
+
+### File ownership
+
+**Shared - Touch these files carefully**
+`src/state.py`, `src/runner.py`, `src/architectures/base.py`, `src/architectures/__init__.py`, `src/domains/base.py`, `src/domains/__init__.py`, `src/config.py`, `src/llm.py`, `src/metrics.py`, `scripts/*`, `configs/experiments.yaml`
+
+
+### Running experiments independently
+
+Use `--domain` and `--architecture` to scope runs so neither partner accidentally triggers the other's configs:
+
+```bash
+# Member 1 — logic puzzles only
+python scripts/run_all.py --domain logic_puzzles --output results/results_logic.jsonl
+
+# Member 2 — gridworld only
+python scripts/run_all.py --domain gridworld --output results/results_gridworld.jsonl
+```
+
+Merge the two JSONL files in the analysis step — they share the same schema.
+
 ## References
 
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
