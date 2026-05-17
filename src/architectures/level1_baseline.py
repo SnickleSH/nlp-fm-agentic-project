@@ -3,7 +3,10 @@ from __future__ import annotations
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.prebuilt import ToolNode
+try:
+    from langgraph.prebuilt import ToolNode
+except ImportError:
+    from langgraph.prebuilt.tool_node import ToolNode
 
 from src.architectures.base import BaseArchitecture
 from src.config import ExperimentConfig
