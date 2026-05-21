@@ -117,3 +117,20 @@ class GridworldDomain(BaseDomain):
         if self._current_grid is None:
             raise RuntimeError("No grid generated — call generate_task first.")
         return create_gridworld_tools(self._current_grid)
+
+    def format_critic_prompt(self, task: Task, solution: str) -> str:
+        obs = self._current_grid.get_observation() if self._current_grid else ""
+        rules_text = "\n".join(f"- {rule}" for rule in task.rules)
+        return (
+            f"Task:\n{task.description}\n\n"
+            f"Rules:\n{rules_text}\n\n"
+            f"Current grid state after the agent's moves:\n{obs}\n\n"
+            f"Agent's report:\n{solution}\n\n"
+            "The agent (A) succeeds only when it stands on the goal (G). "
+            "Inspect the current position relative to the goal.\n\n"
+            "Respond in this exact format:\n"
+            "VERDICT: ACCEPT  (or)  VERDICT: REJECT\n"
+            "Accept only if the agent is on the goal. If REJECT, give concise "
+            "navigation guidance (which directions to move) based on the agent's "
+            "current position relative to the goal, and note any walls in the way."
+        )

@@ -26,7 +26,7 @@ All multi-agent pipelines are implemented using [LangGraph](https://github.com/l
 |-------|-------------|----------------|--------|
 | **Level 1** | Single-Agent Baseline | `START -> agent [-> tools -> agent]* -> END` | Implemented |
 | **Level 2A** | Planner + Executor | `START -> planner -> executor [-> tools -> executor]* -> END` | Implemented |
-| **Level 2B** | Solver + Critic | `START -> solver -> critic -> [solver ↔ critic]* -> END` | Planned |
+| **Level 2B** | Solver + Critic | `START -> solver -> critic -> [solver ↔ critic]* -> END` | Implemented |
 | **Level 3** | Adaptive (ToT + Episodic Memory) | Multi-node with branching, scoring, and memory retrieval | Planned |
 
 ### Level 1 — Single-Agent Baseline
@@ -35,8 +35,8 @@ A single LLM call with no explicit planning or persistent memory. For interactiv
 ### Level 2A — Planner + Executor
 A two-node linear pipeline. The **planner** generates a step-by-step strategy, and the **executor** carries it out sequentially. For gridworld, the executor runs a tool-calling loop to execute the plan with move actions.
 
-### Level 2B — Solver + Critic *(planned)*
-A cyclic graph where the **solver** proposes a solution and the **critic** evaluates it against task rules. If rejected, the state routes back to the solver with feedback for a retry, up to a configurable iteration limit.
+### Level 2B — Solver + Critic
+A cyclic graph where the **solver** proposes a solution and the **critic** evaluates it against the task rules. If rejected, the state routes back to the solver with feedback for a retry, up to `max_critic_iterations` (default 3). The critic is an LLM-based self-review and never sees the ground truth. For interactive domains the solver runs a tool-calling loop before each critique (`START -> solver [-> tools -> solver]* -> critic -> {solver | END}`); for non-interactive domains it is a single solve call per cycle.
 
 ### Level 3 — Adaptive System *(planned)*
 Extends Level 2B with **Tree-of-Thought** branching (planner generates multiple continuations, critic scores them, executor acts on the best) and **Episodic Memory** (saves execution logs to a persistent memory bank for retrieval in future runs).
@@ -188,8 +188,9 @@ All architectures are evaluated across all domains at both difficulty levels, wi
 1. Create `src/domains/<domain_name>/domain.py` implementing `BaseDomain`
 2. Implement `generate_task()`, `format_system_prompt()`, `format_task_prompt()`, `evaluate()`
 3. Override `get_tools()` only for interactive domains
-4. Register in `src/domains/__init__.py`
-5. Add conditions to `configs/experiments.yaml`
+4. Optionally override `format_critic_prompt()` to give the Level 2B critic domain-specific context (e.g. live environment state). The base default critiques against `task.rules`, so new domains work with Level 2B out of the box.
+5. Register in `src/domains/__init__.py`
+6. Add conditions to `configs/experiments.yaml`
 
 ### Adding a new architecture
 

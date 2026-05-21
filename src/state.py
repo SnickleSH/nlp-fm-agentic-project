@@ -12,4 +12,9 @@ class AgentState(TypedDict):
     final_answer: str
     iteration: int
     max_iterations: int
+    # Solver + Critic (Level 2B) fields. Default via .get() in nodes, so they
+    # need not be present in the initial state.
+    critic_iterations: int
+    critic_verdict: str
+    critic_feedback: str
     metadata: dict
