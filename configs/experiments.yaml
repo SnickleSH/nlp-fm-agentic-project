@@ -21,6 +21,17 @@ experiments:
     difficulty: hard
     num_runs: 5
 
+  # Level 2B solver + critic
+  - architecture: level2b
+    domain: gridworld
+    difficulty: easy
+    num_runs: 5
+
+  - architecture: level2b
+    domain: gridworld
+    difficulty: hard
+    num_runs: 5
+
   # Logic puzzles
   - architecture: level1
     domain: logic_puzzles
@@ -39,6 +50,17 @@ experiments:
     num_runs: 5
 
   - architecture: level2a
+    domain: logic_puzzles
+    difficulty: hard
+    num_runs: 5
+    max_tokens: 16000
+
+  - architecture: level2b
+    domain: logic_puzzles
+    difficulty: easy
+    num_runs: 5
+
+  - architecture: level2b
     domain: logic_puzzles
     difficulty: hard
     num_runs: 5
