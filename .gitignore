@@ -56,6 +56,10 @@ data/processed/*
 *.bin
 *.safetensors
 
+# Results (populated by experiment runs)
+results/*
+!results/.gitkeep
+
 # Logs
 *.log
 logs/

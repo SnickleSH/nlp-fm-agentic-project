@@ -7,14 +7,17 @@ packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-langgraph = "^0.0.30"
-langchain = "^0.1.12"
+langgraph = ">=0.4"
+langchain-core = "^0.3"
+langchain-openai = "^0.3"
 python-dotenv = "^1.0.1"
+pydantic = "^2.0"
+pyyaml = "^6.0"
+pandas = "^2.2"
+matplotlib = "^3.8"
+seaborn = "^0.13"
 jupyter = "^1.0.0"
-pandas = "^2.2.1"
-matplotlib = "^3.8.3"
-openai = "^2.32.0"
-dotenv = "^0.9.9"
+datasets = "^2.0"
 
 [build-system]
 requires = ["poetry-core"]
