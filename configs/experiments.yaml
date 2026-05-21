@@ -31,6 +31,7 @@ experiments:
     domain: logic_puzzles
     difficulty: hard
     num_runs: 5
+    max_tokens: 16000
 
   - architecture: level2a
     domain: logic_puzzles
@@ -41,3 +42,14 @@ experiments:
     domain: logic_puzzles
     difficulty: hard
     num_runs: 5
+    max_tokens: 16000
+
+  # Thinking ablation — L1 × easy × no_think (5 runs).
+  # Documents whether enable_thinking=False has any observable effect on this
+  # ELTE/vLLM deployment.  Probe results show the model reasons regardless;
+  # the report should acknowledge this cannot be suppressed on this endpoint.
+  - architecture: level1
+    domain: logic_puzzles
+    difficulty: easy
+    num_runs: 5
+    enable_thinking: false

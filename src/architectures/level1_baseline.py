@@ -19,7 +19,11 @@ class Level1Baseline(BaseArchitecture):
     def build_graph(self, domain: BaseDomain, config: ExperimentConfig) -> CompiledStateGraph:
         self.domain = domain
         self.config = config
-        self.llm = create_llm(temperature=config.temperature)
+        self.llm = create_llm(
+            temperature=config.temperature,
+            max_tokens=config.max_tokens,
+            enable_thinking=config.enable_thinking,
+        )
         tools = domain.get_tools()
 
         graph = StateGraph(AgentState)

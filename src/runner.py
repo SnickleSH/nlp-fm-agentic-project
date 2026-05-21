@@ -6,7 +6,7 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel
 
 from src.architectures import get_architecture
@@ -63,7 +63,7 @@ def run_single(config: ExperimentConfig, task_id: int, run_id: int) -> RunResult
         final_answer = final_state.get("final_answer", "")
         if not final_answer:
             for msg in reversed(final_state.get("messages", [])):
-                if hasattr(msg, "content") and msg.content:
+                if isinstance(msg, AIMessage) and msg.content:
                     final_answer = msg.content
                     break
 

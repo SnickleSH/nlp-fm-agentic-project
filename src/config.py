@@ -14,6 +14,11 @@ class ExperimentConfig(BaseModel):
     num_runs: int = 5
     max_iterations: int = 10
     temperature: float = 0.7
+    max_tokens: int = 4096
+    # Qwen3 always reasons on the ELTE endpoint regardless of this flag —
+    # enable_thinking=False causes the model to loop and emit empty content.
+    # Lock to True for all primary conditions.
+    enable_thinking: bool = True
 
 
 def load_experiment_configs(path: str | Path = "configs/experiments.yaml") -> list[ExperimentConfig]:
