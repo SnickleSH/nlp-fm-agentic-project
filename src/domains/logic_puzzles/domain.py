@@ -1,7 +1,17 @@
 from __future__ import annotations
 
 from src.domains.base import BaseDomain, EvaluationResult, Task
-from src.domains.logic_puzzles.engine import get_puzzle, parse_llm_answer, score_answer
+from src.domains.logic_puzzles.engine import (
+	get_puzzle,
+	parse_llm_answer_tagged,
+	score_answer,
+)
+
+_FEW_SHOT = (
+	"Mini-example (2 positions, 2 attributes):\n"
+	"Clue: The cat lives at position 1.\n"
+	'Output: {"pet": ["cat", "dog"], "color": ["red", "green"]}\n\n'
+)
 
 
 class LogicPuzzlesDomain(BaseDomain):
@@ -49,20 +59,22 @@ class LogicPuzzlesDomain(BaseDomain):
 			raise RuntimeError("Task metadata missing clues.")
 
 		attribute_keys = list(task.ground_truth.keys())
-		keys_text = ", ".join(f"\"{key}\"" for key in attribute_keys)
+		keys_text = ", ".join(f'"{key}"' for key in attribute_keys)
 		rules_text = "\n".join(f"- {rule}" for rule in task.rules)
 		return (
 			f"{task.description}\n\n"
 			f"Rules:\n{rules_text}\n\n"
 			f"Attribute keys (case-sensitive): {keys_text}\n"
 			"Use these keys exactly in the JSON output.\n\n"
+			f"{_FEW_SHOT}"
 			f"Clues:\n{clues}\n\n"
 			"Output format:\n"
-			"{\"attribute\": [\"value_at_position_1\", \"value_at_position_2\", ...]}"
+			'{"attribute": ["value_at_position_1", "value_at_position_2", ...]}'
 		)
 
 	def evaluate(self, task: Task, answer: str) -> EvaluationResult:
-		prediction = parse_llm_answer(answer)
+		prediction, schema = parse_llm_answer_tagged(answer)
 		success, score, details = score_answer(task.ground_truth, prediction)
 		details["puzzle_id"] = task.metadata.get("puzzle_id")
+		details["answer_schema"] = schema  # "attribute_dict" | "position_record" | None
 		return EvaluationResult(success=success, score=score, details=details)

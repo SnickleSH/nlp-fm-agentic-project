@@ -30,6 +30,9 @@ class RunResult(BaseModel):
     final_answer: str
     evaluation_details: dict = {}
     error: str | None = None
+    # True when any single call's completion_tokens ≈ thinking_token_budget,
+    # meaning the reasoning was likely truncated by the budget cap.
+    budget_saturated: bool = False
 
 
 def run_single(config: ExperimentConfig, task_id: int, run_id: int) -> RunResult:
@@ -69,6 +72,11 @@ def run_single(config: ExperimentConfig, task_id: int, run_id: int) -> RunResult
 
         evaluation = domain.evaluate(task, final_answer)
         usage = metrics_cb.get_usage()
+        budget_saturated = (
+            config.thinking_token_budget is not None
+            and usage.max_per_call_completion_tokens
+            >= int(config.thinking_token_budget * 0.95)
+        )
 
         return RunResult(
             architecture=config.architecture,
@@ -84,6 +92,7 @@ def run_single(config: ExperimentConfig, task_id: int, run_id: int) -> RunResult
             num_llm_calls=usage.llm_call_count,
             final_answer=final_answer[:500],
             evaluation_details=evaluation.details,
+            budget_saturated=budget_saturated,
         )
     except Exception as e:
         elapsed = time.time() - start

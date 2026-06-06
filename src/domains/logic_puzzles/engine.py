@@ -44,20 +44,13 @@ def _parse_solution(solution_str: str) -> dict[str, list[str]]:
 
 
 def _is_easy(record: dict[str, str]) -> bool:
-	puzzle_id = record["ID"]
-	if not puzzle_id.startswith("Pt2_") or "level1" not in puzzle_id:
-		return False
-	try:
-		solution = _parse_solution(record["SolutionGrid"])
-		num_positions = len(next(iter(solution.values())))
-		return num_positions <= 4
-	except Exception:
-		return False
+	"""Pt2 3×3 puzzles — fast reference floor."""
+	return record["ID"].startswith("Pt2_") and "3x3" in record["ID"]
 
 
 def _is_hard(record: dict[str, str]) -> bool:
-	puzzle_id = record["ID"]
-	return puzzle_id.startswith("Pt1_") and "lexical_replacements" in puzzle_id
+	"""Pt2 5×5 puzzles — main discrimination sweep."""
+	return record["ID"].startswith("Pt2_") and "5x5" in record["ID"]
 
 
 def _filter_by_difficulty(difficulty: str) -> list[dict[str, str]]:
@@ -101,31 +94,127 @@ def pool_size(difficulty: str) -> int:
 	return len(_filter_by_difficulty(difficulty))
 
 
-def parse_llm_answer(raw: str) -> dict[str, list[str]] | None:
-	"""Extract a JSON-like dict from raw model output."""
-	fence_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.DOTALL)
-	if fence_match:
-		candidate = fence_match.group(1)
+def _extract_json_str(raw: str) -> str | None:
+	"""Find the first complete JSON object or array in raw text.
+
+	Tries a fenced block first, then scans for the first balanced {…} or […].
+	Handles nested structures correctly via bracket counting.
+	"""
+	fence = re.search(r"```(?:json)?\s*(.*?)\s*```", raw, re.DOTALL)
+	if fence:
+		return fence.group(1).strip()
+
+	obj_pos = raw.find("{")
+	arr_pos = raw.find("[")
+
+	if obj_pos == -1 and arr_pos == -1:
+		return None
+
+	if obj_pos == -1 or (arr_pos != -1 and arr_pos < obj_pos):
+		opener, closer, start = "[", "]", arr_pos
 	else:
-		brace_match = re.search(r"\{.*\}", raw, re.DOTALL)
-		if not brace_match:
+		opener, closer, start = "{", "}", obj_pos
+
+	depth, in_str, esc = 0, False, False
+	for i, ch in enumerate(raw[start:], start):
+		if esc:
+			esc = False
+			continue
+		if ch == "\\" and in_str:
+			esc = True
+			continue
+		if ch == '"':
+			in_str = not in_str
+			continue
+		if in_str:
+			continue
+		if ch == opener:
+			depth += 1
+		elif ch == closer:
+			depth -= 1
+			if depth == 0:
+				return raw[start : i + 1]
+	return None
+
+
+def _normalize_position_records(rows: list[dict]) -> dict[str, list[str]] | None:
+	"""Convert [{position: N, attr: val, ...}] → {attr: [val_pos1, ...]}."""
+	if not rows or not isinstance(rows[0], dict):
+		return None
+	try:
+		if "position" in rows[0]:
+			rows = sorted(rows, key=lambda r: int(r.get("position", 0)))
+		keys = [k for k in rows[0] if k != "position"]
+		if not keys:
 			return None
-		candidate = brace_match.group(0)
+		result: dict[str, list[str]] = {k: [] for k in keys}
+		for row in rows:
+			for k in keys:
+				result[k].append(str(row.get(k, "")))
+		return result
+	except Exception:
+		return None
+
+
+def parse_llm_answer_tagged(
+	raw: str,
+) -> tuple[dict[str, list[str]] | None, str | None]:
+	"""Parse raw model output, returning (result, schema_tag).
+
+	schema_tag:
+	  "attribute_dict"   — model used the expected {attr: [val, ...]} schema
+	  "position_record"  — model used {solution: [{position:N, attr:v}]} or
+	                       [{position:N, attr:v}]; normalised to attribute_dict
+	  None               — parse failure
+	"""
+	candidate_str = _extract_json_str(raw)
+	if candidate_str is None:
+		return None, None
 
 	try:
-		parsed = json.loads(candidate)
+		parsed = json.loads(candidate_str)
 	except json.JSONDecodeError:
 		try:
-			parsed = ast.literal_eval(candidate)
+			parsed = ast.literal_eval(candidate_str)
 		except Exception:
-			return None
+			return None, None
 
-	if not isinstance(parsed, dict):
-		return None
-	if not all(isinstance(value, list) for value in parsed.values()):
-		return None
+	# Schema A: dict whose values are lists of non-dict items
+	if isinstance(parsed, dict) and parsed:
+		has_row_lists = any(
+			isinstance(v, list) and v and isinstance(v[0], dict)
+			for v in parsed.values()
+		)
+		if not has_row_lists and all(isinstance(v, list) for v in parsed.values()):
+			return parsed, "attribute_dict"
 
-	return parsed
+		# Schema B wrapped: {"solution": [{position:N,...},...]}
+		if has_row_lists:
+			rows = next(
+				(
+					v
+					for v in parsed.values()
+					if isinstance(v, list) and v and isinstance(v[0], dict)
+				),
+				None,
+			)
+			result = _normalize_position_records(rows)
+			if result is not None:
+				return result, "position_record"
+
+	# Schema B bare: [{position:N,...},...]
+	if isinstance(parsed, list) and parsed and isinstance(parsed[0], dict):
+		result = _normalize_position_records(parsed)
+		if result is not None:
+			return result, "position_record"
+
+	return None, None
+
+
+def parse_llm_answer(raw: str) -> dict[str, list[str]] | None:
+	"""Backward-compatible wrapper; accepts both JSON schemas."""
+	result, _ = parse_llm_answer_tagged(raw)
+	return result
 
 
 def score_answer(

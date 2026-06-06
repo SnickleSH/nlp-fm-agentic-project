@@ -14,6 +14,9 @@ class TokenUsage(BaseModel):
     reasoning_tokens: int = 0
     total_tokens: int = 0
     llm_call_count: int = 0
+    # Maximum completion tokens seen in a single call — used to detect budget saturation
+    # (budget_saturated when max_per_call_completion ≈ thinking_token_budget).
+    max_per_call_completion_tokens: int = 0
 
 
 class MetricsCallback(BaseCallbackHandler):
@@ -23,13 +26,16 @@ class MetricsCallback(BaseCallbackHandler):
         self.completion_tokens = 0
         self.reasoning_tokens = 0
         self.llm_call_count = 0
+        self._per_call_completion: list[int] = []
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         self.llm_call_count += 1
+        call_completion = 0
         if response.llm_output and "token_usage" in response.llm_output:
             usage = response.llm_output["token_usage"]
             self.prompt_tokens += usage.get("prompt_tokens", 0)
-            self.completion_tokens += usage.get("completion_tokens", 0)
+            call_completion = usage.get("completion_tokens", 0)
+            self.completion_tokens += call_completion
 
         # Standard OpenAI path for reasoning token breakdown (o1/o3 and future
         # Qwen3 endpoint upgrades).  LangChain surfaces this via
@@ -44,6 +50,8 @@ class MetricsCallback(BaseCallbackHandler):
                 )
                 self.reasoning_tokens += details.get("reasoning_tokens", 0)
 
+        self._per_call_completion.append(call_completion)
+
     def get_usage(self) -> TokenUsage:
         return TokenUsage(
             prompt_tokens=self.prompt_tokens,
@@ -51,4 +59,5 @@ class MetricsCallback(BaseCallbackHandler):
             reasoning_tokens=self.reasoning_tokens,
             total_tokens=self.prompt_tokens + self.completion_tokens,
             llm_call_count=self.llm_call_count,
+            max_per_call_completion_tokens=max(self._per_call_completion, default=0),
         )
