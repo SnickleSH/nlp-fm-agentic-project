@@ -99,11 +99,15 @@ class Level2BSolverCritic(BaseArchitecture):
         combined_system = "\n\n".join(p for p in [system_text, solver_instruction] if p)
 
         human_parts = [self._original_task(state)]
-        feedback = state.get("critic_feedback", "")
-        if feedback:
+        history = state.get("critique_history", [])
+        if history:
+            entries = "\n\n".join(
+                f"Attempt {i + 1} was rejected:\n{fb}" for i, fb in enumerate(history)
+            )
             human_parts.append(
-                "A reviewer REJECTED your previous attempt with this feedback. "
-                "Address every point and produce a corrected solution:\n" + feedback
+                "Your previous attempt(s) were rejected. Full rejection history:\n"
+                + entries
+                + "\n\nAddress every point and produce a corrected solution."
             )
 
         messages = [
@@ -154,6 +158,7 @@ class Level2BSolverCritic(BaseArchitecture):
         return {
             "critic_verdict": verdict,
             "critic_feedback": feedback,
+            "critique_history": state.get("critique_history", []) + [feedback],
             "critic_iterations": state.get("critic_iterations", 0) + 1,
             "iteration": 0,
             "messages": [HumanMessage(content=f"[CRITIC VERDICT: {verdict}]\n{feedback}")],

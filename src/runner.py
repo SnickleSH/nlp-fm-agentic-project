@@ -30,6 +30,9 @@ class RunResult(BaseModel):
     final_answer: str
     evaluation_details: dict = {}
     error: str | None = None
+    # Number of critic calls made in a Level 2B run (0 for L1/L2A).
+    # Solver attempts = revision_count (initial + re-solves after each REJECT).
+    revision_count: int = 0
     # True when any single call's completion_tokens ≈ thinking_token_budget,
     # meaning the reasoning was likely truncated by the budget cap.
     budget_saturated: bool = False
@@ -92,6 +95,7 @@ def run_single(config: ExperimentConfig, task_id: int, run_id: int) -> RunResult
             num_llm_calls=usage.llm_call_count,
             final_answer=final_answer[:500],
             evaluation_details=evaluation.details,
+            revision_count=final_state.get("critic_iterations", 0),
             budget_saturated=budget_saturated,
         )
     except Exception as e:

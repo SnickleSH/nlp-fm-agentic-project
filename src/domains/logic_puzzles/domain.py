@@ -72,6 +72,24 @@ class LogicPuzzlesDomain(BaseDomain):
 			'{"attribute": ["value_at_position_1", "value_at_position_2", ...]}'
 		)
 
+	def format_critic_prompt(self, task: Task, solution: str) -> str:
+		clues = task.metadata.get("clues", "")
+		num_positions = task.metadata.get("num_positions", "?")
+		num_attributes = task.metadata.get("num_attributes", "?")
+		return (
+			f"Logic grid puzzle: {num_positions} positions, {num_attributes} attributes.\n\n"
+			f"Clues:\n{clues}\n\n"
+			f"Proposed solution:\n{solution}\n\n"
+			"Verify the proposed solution against EVERY clue above.\n"
+			"For each clue, state whether it is SATISFIED or VIOLATED.\n"
+			"If violated, explain which values conflict with that clue and what the "
+			"correct assignment should be.\n\n"
+			"End your response with exactly one of:\n"
+			"VERDICT: ACCEPT  — all clues are satisfied\n"
+			"VERDICT: REJECT  — one or more clues are violated; list each violation "
+			"and the required correction."
+		)
+
 	def evaluate(self, task: Task, answer: str) -> EvaluationResult:
 		prediction, schema = parse_llm_answer_tagged(answer)
 		success, score, details = score_answer(task.ground_truth, prediction)

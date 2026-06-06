@@ -16,5 +16,6 @@ class AgentState(TypedDict):
     # need not be present in the initial state.
     critic_iterations: int
     critic_verdict: str
-    critic_feedback: str
+    critic_feedback: str   # latest feedback only (for backward compat)
+    critique_history: list[str]  # accumulated per-revision feedbacks shown to solver
     metadata: dict
