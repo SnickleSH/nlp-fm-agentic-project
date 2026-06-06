@@ -17,6 +17,8 @@ def main() -> None:
     parser.add_argument("--num-tasks", type=int, default=3, help="Number of tasks to generate")
     parser.add_argument("--max-iterations", type=int, default=10)
     parser.add_argument("--temperature", type=float, default=0.7)
+    parser.add_argument("--thinking-token-budget", type=int, default=None,
+                        help="Per-call thinking token budget (triggers reasoning_effort=medium)")
     parser.add_argument("--output", default="results/results.jsonl")
     args = parser.parse_args()
 
@@ -27,12 +29,14 @@ def main() -> None:
         num_runs=args.num_runs,
         max_iterations=args.max_iterations,
         temperature=args.temperature,
+        thinking_token_budget=args.thinking_token_budget,
     )
 
     total = args.num_tasks * args.num_runs
     completed = 0
 
-    print(f"Running: {config.architecture} / {config.domain} / {config.difficulty}")
+    budget_str = f", budget={config.thinking_token_budget}" if config.thinking_token_budget else ""
+    print(f"Running: {config.architecture} / {config.domain} / {config.difficulty}{budget_str}")
     print(f"Tasks: {args.num_tasks}, Runs per task: {args.num_runs}, Total: {total}")
     print("-" * 60)
 

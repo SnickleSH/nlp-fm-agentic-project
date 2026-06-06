@@ -1,0 +1,74 @@
+# Pilot sweep: 1 puzzle × {L1, L2A, L2B} × {2k, 4k, 6k budget}, 5 runs each.
+#
+# Goal: confirm that budget levels sit in the struggling/discrimination zone
+# before committing full compute (~10 runs/condition). Run with:
+#
+#   poetry run python scripts/run_all.py \
+#     --config configs/pilot.yaml \
+#     --num-tasks 1 \
+#     --output results/pilot.jsonl
+#
+# Interpret output:
+#   2k mean score ~0      → floor too low (shift range up to 4k/6k/8k)
+#   6k mean score ~1.0    → ceiling hit    (shift range down or add 8k/10k)
+#   spread across budgets → discrimination zone confirmed, proceed to Step 5
+#
+# Domain: hard = Pt2 5x5 (any level); task_id=0 is the same puzzle for all conditions.
+
+experiments:
+  # --- Level 1 baseline ---
+  - architecture: level1
+    domain: logic_puzzles
+    difficulty: hard
+    num_runs: 5
+    thinking_token_budget: 2000
+
+  - architecture: level1
+    domain: logic_puzzles
+    difficulty: hard
+    num_runs: 5
+    thinking_token_budget: 4000
+
+  - architecture: level1
+    domain: logic_puzzles
+    difficulty: hard
+    num_runs: 5
+    thinking_token_budget: 6000
+
+  # --- Level 2A planner + executor ---
+  - architecture: level2a
+    domain: logic_puzzles
+    difficulty: hard
+    num_runs: 5
+    thinking_token_budget: 2000
+
+  - architecture: level2a
+    domain: logic_puzzles
+    difficulty: hard
+    num_runs: 5
+    thinking_token_budget: 4000
+
+  - architecture: level2a
+    domain: logic_puzzles
+    difficulty: hard
+    num_runs: 5
+    thinking_token_budget: 6000
+
+  # --- Level 2B solver + critic ---
+  - architecture: level2b
+    domain: logic_puzzles
+    difficulty: hard
+    num_runs: 5
+    thinking_token_budget: 2000
+
+  - architecture: level2b
+    domain: logic_puzzles
+    difficulty: hard
+    num_runs: 5
+    thinking_token_budget: 4000
+
+  - architecture: level2b
+    domain: logic_puzzles
+    difficulty: hard
+    num_runs: 5
+    thinking_token_budget: 6000
