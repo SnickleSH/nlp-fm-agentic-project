@@ -11,9 +11,6 @@ def create_llm(
     max_tokens: int = 4096,
     enable_thinking: bool = True,
 ) -> ChatOpenAI:
-    # enable_thinking is forwarded via extra_body for Qwen3 deployments.
-    # On the ELTE endpoint the parameter has no observed effect — the model
-    # always reasons.
     return ChatOpenAI(
         base_url=os.getenv("ELTE_API_BASE"),
         api_key=os.getenv("ELTE_API_KEY"),

@@ -153,10 +153,7 @@ class Level2BSolverCritic(BaseArchitecture):
             "critic_verdict": verdict,
             "critic_feedback": feedback,
             "critic_iterations": state.get("critic_iterations", 0) + 1,
-            # Reset the solver's tool-loop counter so the next cycle gets a fresh budget.
             "iteration": 0,
-            # HumanMessage keeps the AI/tool message pairing intact for the
-            # interactive solver, which reads the full message history.
             "messages": [HumanMessage(content=f"[CRITIC VERDICT: {verdict}]\n{feedback}")],
         }
 
