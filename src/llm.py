@@ -29,6 +29,6 @@ def create_llm(
         model=os.getenv("ELTE_MODEL_NAME"),
         temperature=temperature,
         max_tokens=effective_max_tokens,
-        model_kwargs={"extra_body": extra_body},
+        extra_body=extra_body,
         request_timeout=request_timeout,
     )
