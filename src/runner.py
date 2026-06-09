@@ -70,7 +70,10 @@ def run_single(config: ExperimentConfig, task_id: int, run_id: int) -> RunResult
 
     try:
         start = time.time()
-        final_state = graph.invoke(initial_state, config={"callbacks": [metrics_cb]})
+        final_state = graph.invoke(
+            initial_state,
+            config={"callbacks": [metrics_cb], "recursion_limit": config.recursion_limit},
+        )
         elapsed = time.time() - start
 
         # Extract final answer from last AI message if not explicitly set

@@ -14,6 +14,7 @@ class ExperimentConfig(BaseModel):
     num_runs: int = 5
     max_iterations: int = 10
     max_critic_iterations: int = 3
+    recursion_limit: int = 100
     temperature: float = 0.7
     max_tokens: int = 4096
     enable_thinking: bool = True  # kept for gridworld backward compat
