@@ -30,8 +30,10 @@ All multi-agent pipelines will be implemented using LangGraph, leveraging its ab
   * The `critic` agent evaluates the state against the rules and either approves the action or routes the state back to the solver with feedback for a retry.
 * **Level 3 Adaptive System (`Planner + Critic + Executor` with ToT & Episodic Memory):**
   * A complex multi-node graph acting as an adaptive system.
-  * **Tree-of-Thought (ToT):** The `planner` generates multiple branch continuations for the next step, the `critic` scores them, and the `executor` acts on the highest-scoring branch.
+  * **Tree-of-Thought (ToT):** The `planner` generates multiple branch continuations for the next step, the `critic` scores them, and the `executor` acts on the highest-scoring branch. https://www.agentic-patterns.com/patterns/tree-of-thought-reasoning/#:~:text=Explore%20a%20search%20tree%20of%20intermediate%20thoughts%20instead,promising%20paths%20until%20a%20stopping%20condition%20is%20met.
   * **Episodic Memory Retrieval & Action Caching:** The system saves execution logs (both successes and failures) to a persistent memory bank. During the planning phase, it retrieves past episodes to avoid repeating errors or to instantly reuse a proven sub-path.
+  https://www.agentic-patterns.com/
+
 
 ### Domains
 * **Domain 1: Reasoning tasks (Logic Puzzles)**
