@@ -5,7 +5,7 @@ import argparse
 from pathlib import Path
 
 from src.config import load_experiment_configs
-from src.runner import run_single, save_result
+from src.runner import load_completed_keys, run_single, save_result
 
 
 def main() -> None:
@@ -24,6 +24,10 @@ def main() -> None:
         configs = [c for c in configs if c.architecture == args.architecture]
     print(f"Loaded {len(configs)} experiment conditions from {args.config}")
 
+    completed = load_completed_keys(args.output)
+    if completed:
+        print(f"Resuming: {len(completed)} run(s) already in {args.output}, will skip.")
+
     for i, config in enumerate(configs, 1):
         label = f"{config.architecture}/{config.domain}/{config.difficulty}"
         total_runs = args.num_tasks * config.num_runs
@@ -33,9 +37,18 @@ def main() -> None:
 
         for task_id in range(args.num_tasks):
             for run_id in range(config.num_runs):
+                key = (
+                    config.architecture, config.domain, config.difficulty,
+                    task_id, run_id, config.thinking_token_budget,
+                    config.max_critic_iterations,
+                )
+                if key in completed:
+                    print(f"  task={task_id} run={run_id} ... SKIP (already logged)")
+                    continue
                 print(f"  task={task_id} run={run_id} ... ", end="", flush=True)
                 result = run_single(config, task_id, run_id)
                 save_result(result, args.output)
+                completed.add(key)
                 status = "OK" if result.success else "FAIL"
                 if result.error:
                     status = f"ERROR: {result.error[:50]}"

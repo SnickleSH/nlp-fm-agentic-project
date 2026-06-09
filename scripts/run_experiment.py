@@ -5,7 +5,7 @@ import argparse
 import sys
 
 from src.config import ExperimentConfig
-from src.runner import run_single, save_result
+from src.runner import load_completed_keys, run_single, save_result
 
 
 def main() -> None:
@@ -33,19 +33,32 @@ def main() -> None:
     )
 
     total = args.num_tasks * args.num_runs
-    completed = 0
+    done_count = 0
 
     budget_str = f", budget={config.thinking_token_budget}" if config.thinking_token_budget else ""
     print(f"Running: {config.architecture} / {config.domain} / {config.difficulty}{budget_str}")
     print(f"Tasks: {args.num_tasks}, Runs per task: {args.num_runs}, Total: {total}")
     print("-" * 60)
 
+    completed_keys = load_completed_keys(args.output)
+    if completed_keys:
+        print(f"Resuming: {len(completed_keys)} run(s) already in {args.output}, will skip.")
+
     for task_id in range(args.num_tasks):
         for run_id in range(args.num_runs):
-            completed += 1
-            print(f"[{completed}/{total}] task={task_id} run={run_id} ... ", end="", flush=True)
+            done_count += 1
+            key = (
+                config.architecture, config.domain, config.difficulty,
+                task_id, run_id, config.thinking_token_budget,
+                config.max_critic_iterations,
+            )
+            if key in completed_keys:
+                print(f"[{done_count}/{total}] task={task_id} run={run_id} ... SKIP (already logged)")
+                continue
+            print(f"[{done_count}/{total}] task={task_id} run={run_id} ... ", end="", flush=True)
             result = run_single(config, task_id, run_id)
             save_result(result, args.output)
+            completed_keys.add(key)
             status = "OK" if result.success else "FAIL"
             if result.error:
                 status = f"ERROR: {result.error[:60]}"
