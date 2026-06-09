@@ -19,3 +19,8 @@ class AgentState(TypedDict):
     critic_feedback: str   # latest feedback only (for backward compat)
     critique_history: list[str]  # accumulated per-revision feedbacks shown to solver
     metadata: dict
+    # Level 3 (ToT + episodic memory) transient fields.
+    # All read via .get() defaults so L1/L2A/L2B states are unaffected.
+    branches: list[dict]           # each {"content": str, "score": float}
+    selected_branch: str | None    # committed branch after critic pass
+    retrieved_episodes: list[dict] # episodes from EpisodicMemory.retrieve()
