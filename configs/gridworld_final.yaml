@@ -1,0 +1,93 @@
+# Gridworld final matrix — Benedek's track (B2 / B5).
+#
+# 4 levels × 3 archs = 12 conditions (L3 rows omitted until B3 lands).
+# Levels are defined in src/domains/gridworld/engine.py:_LEVEL_PRESETS:
+#   easy        4×4 full-obs       (capability anchor)
+#   medium      6×6 full-obs       (capability anchor)
+#   hard        6×6 partial-obs    (fog, view_radius=1)
+#   extra_hard  6×6 partial-obs    (fog) + thinking_token_budget cap
+#
+# extra_hard's budget is calibrated to truncate planning calls mid-stream.
+# B4 pilot (medium unlimited, 2 runs × 9 calls each):
+#   peak per-call completion tokens per run: 3087, 1753  -> mean peak = 2420
+#   round(0.6 × 2420) ≈ 1500
+# 1500 also matches the logic-puzzle extra_hard budget, which is empirically
+# in the discrimination zone (per roadmap §2).
+#
+# To run:
+#   poetry run python scripts/run_all.py \
+#     --config configs/gridworld_final.yaml \
+#     --num-tasks 5 \
+#     --output results/results_gridworld.jsonl
+
+experiments:
+  # ---- easy — 4×4 full-obs, unlimited
+  - architecture: level1
+    domain: gridworld
+    difficulty: easy
+    num_runs: 8
+
+  - architecture: level2a
+    domain: gridworld
+    difficulty: easy
+    num_runs: 8
+
+  - architecture: level2b
+    domain: gridworld
+    difficulty: easy
+    num_runs: 8
+    max_critic_iterations: 2
+
+  # ---- medium — 6×6 full-obs, unlimited
+  - architecture: level1
+    domain: gridworld
+    difficulty: medium
+    num_runs: 8
+
+  - architecture: level2a
+    domain: gridworld
+    difficulty: medium
+    num_runs: 8
+
+  - architecture: level2b
+    domain: gridworld
+    difficulty: medium
+    num_runs: 8
+    max_critic_iterations: 2
+
+  # ---- hard — 6×6 fog, unlimited
+  - architecture: level1
+    domain: gridworld
+    difficulty: hard
+    num_runs: 8
+
+  - architecture: level2a
+    domain: gridworld
+    difficulty: hard
+    num_runs: 8
+
+  - architecture: level2b
+    domain: gridworld
+    difficulty: hard
+    num_runs: 8
+    max_critic_iterations: 2
+
+  # ---- extra_hard — 6×6 fog, budget = TBD (set after B4 medium pilot)
+  - architecture: level1
+    domain: gridworld
+    difficulty: extra_hard
+    num_runs: 10
+    thinking_token_budget: 1500  # round(0.6 × mean per-run peak per-call completion from B4 medium pilot)
+
+  - architecture: level2a
+    domain: gridworld
+    difficulty: extra_hard
+    num_runs: 10
+    thinking_token_budget: 1500  # round(0.6 × mean per-run peak per-call completion from B4 medium pilot)
+
+  - architecture: level2b
+    domain: gridworld
+    difficulty: extra_hard
+    num_runs: 10
+    max_critic_iterations: 2
+    thinking_token_budget: 1500  # round(0.6 × mean per-run peak per-call completion from B4 medium pilot)

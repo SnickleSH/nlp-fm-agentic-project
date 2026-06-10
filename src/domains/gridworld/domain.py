@@ -4,7 +4,7 @@ import json
 import re
 
 from src.domains.base import BaseDomain, EvaluationResult, Task
-from src.domains.gridworld.engine import GridWorld, generate_grid
+from src.domains.gridworld.engine import GridWorld, generate_grid_for_level
 from src.domains.gridworld.tools import create_gridworld_tools
 
 
@@ -13,7 +13,7 @@ class GridworldDomain(BaseDomain):
         self._current_grid: GridWorld | None = None
 
     def generate_task(self, difficulty: str, task_id: int) -> Task:
-        grid = generate_grid(difficulty, seed=task_id)
+        grid = generate_grid_for_level(difficulty, seed=task_id)
         self._current_grid = grid
 
         description = (

@@ -12,7 +12,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run a single experiment condition")
     parser.add_argument("--architecture", required=True, help="Architecture name (e.g. level1, level2a)")
     parser.add_argument("--domain", required=True, help="Domain name (e.g. gridworld)")
-    parser.add_argument("--difficulty", required=True, choices=["easy", "hard"])
+    parser.add_argument("--difficulty", required=True, choices=["easy", "medium", "hard", "extra_hard"])
     parser.add_argument("--num-runs", type=int, default=5, help="Number of runs per task")
     parser.add_argument("--num-tasks", type=int, default=3, help="Number of tasks to generate")
     parser.add_argument("--max-iterations", type=int, default=10)

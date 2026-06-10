@@ -6,20 +6,21 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, model_validator
 
+from src.llm import UNLIMITED_MAX_TOKENS
+
 
 class ExperimentConfig(BaseModel):
     architecture: str
     domain: str
-    difficulty: Literal["easy", "hard"]
+    difficulty: Literal["easy", "medium", "hard", "extra_hard"]
     num_runs: int = 5
     max_iterations: int = 10
     max_critic_iterations: int = 3
     num_branches: int = 3  # L3 only: ToT branch count per planner call
     recursion_limit: int = 100
     temperature: float = 0.7
-    max_tokens: int = 4096
-    enable_thinking: bool = True  # kept for gridworld backward compat
-    thinking_token_budget: int | None = None  # swept variable (2k/4k/6k); triggers reasoning config
+    max_tokens: int = UNLIMITED_MAX_TOKENS
+    thinking_token_budget: int | None = None  # when set, caps reasoning chain length
     request_timeout: float = 1800.0
 
     @model_validator(mode="after")

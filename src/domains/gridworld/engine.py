@@ -84,34 +84,62 @@ class GridWorld:
         return obs, False, {}
 
 
+# Locked level presets. Decoupling grid size, fog, view radius, max_steps, wall
+# count, and path-length range means each can be varied independently — the four
+# 'difficulty' labels just bundle a specific point in that space. extra_hard
+# shares hard's grid params; only the LLM-side thinking budget differs.
+_LEVEL_PRESETS: dict[str, dict] = {
+    "easy": {
+        "width": 4, "height": 4,
+        "fog": False, "view_radius": None,
+        "max_steps": 20,
+        "num_walls_range": (1, 3),
+        "path_len_range": (3, 5),
+    },
+    "medium": {
+        "width": 6, "height": 6,
+        "fog": False, "view_radius": None,
+        "max_steps": 30,
+        "num_walls_range": (5, 10),
+        "path_len_range": (5, 8),
+    },
+    "hard": {
+        "width": 6, "height": 6,
+        "fog": True, "view_radius": 1,
+        "max_steps": 40,
+        "num_walls_range": (5, 10),
+        "path_len_range": (5, 8),
+    },
+    "extra_hard": {
+        "width": 6, "height": 6,
+        "fog": True, "view_radius": 1,
+        "max_steps": 40,
+        "num_walls_range": (5, 10),
+        "path_len_range": (5, 8),
+    },
+}
+
+
 def generate_grid(
-    difficulty: str, seed: int | None = None
+    width: int,
+    height: int,
+    fog: bool,
+    view_radius: int | None,
+    max_steps: int,
+    num_walls_range: tuple[int, int],
+    path_len_range: tuple[int, int],
+    seed: int | None = None,
 ) -> GridWorld:
     rng = random.Random(seed)
+    num_walls = rng.randint(*num_walls_range)
+    min_path, max_path = path_len_range
 
-    if difficulty == "easy":
-        w, h = 4, 4
-        fog = False
-        view_radius = None
-        max_steps = 20
-        num_walls = rng.randint(1, 3)
-        min_path, max_path = 3, 5
-    else:
-        w, h = 8, 8
-        fog = True
-        view_radius = 1
-        max_steps = 50
-        num_walls = rng.randint(10, 18)
-        min_path, max_path = 10, 15
+    agent_pos = (rng.randint(0, width // 4), rng.randint(0, height // 4))
+    goal_pos = (rng.randint(3 * width // 4, width - 1), rng.randint(3 * height // 4, height - 1))
 
-    # Place agent at top-left area, goal at bottom-right area
-    agent_pos = (rng.randint(0, w // 4), rng.randint(0, h // 4))
-    goal_pos = (rng.randint(3 * w // 4, w - 1), rng.randint(3 * h // 4, h - 1))
-
-    # Generate walls ensuring a path exists
     walls: set[tuple[int, int]] = set()
     all_cells = [
-        (x, y) for x in range(w) for y in range(h)
+        (x, y) for x in range(width) for y in range(height)
         if (x, y) != agent_pos and (x, y) != goal_pos
     ]
     rng.shuffle(all_cells)
@@ -120,18 +148,20 @@ def generate_grid(
         if len(walls) >= num_walls:
             break
         walls.add(cell)
-        if not _path_exists(w, h, agent_pos, goal_pos, walls):
+        if not _path_exists(width, height, agent_pos, goal_pos, walls):
             walls.discard(cell)
 
-    # Verify path length is in desired range
-    path_len = _shortest_path_length(w, h, agent_pos, goal_pos, walls)
+    path_len = _shortest_path_length(width, height, agent_pos, goal_pos, walls)
     if path_len is not None and not (min_path <= path_len <= max_path):
-        # Regenerate with a different seed if path length is out of range
-        return generate_grid(difficulty, seed=(seed or 0) + 1000)
+        return generate_grid(
+            width, height, fog, view_radius, max_steps,
+            num_walls_range, path_len_range,
+            seed=(seed or 0) + 1000,
+        )
 
     return GridWorld(
-        width=w,
-        height=h,
+        width=width,
+        height=height,
         agent_pos=agent_pos,
         goal_pos=goal_pos,
         walls=walls,
@@ -139,6 +169,12 @@ def generate_grid(
         view_radius=view_radius,
         max_steps=max_steps,
     )
+
+
+def generate_grid_for_level(level: str, seed: int | None = None) -> GridWorld:
+    if level not in _LEVEL_PRESETS:
+        raise ValueError(f"Unknown level {level!r}. Expected one of {list(_LEVEL_PRESETS)}.")
+    return generate_grid(seed=seed, **_LEVEL_PRESETS[level])
 
 
 def _path_exists(

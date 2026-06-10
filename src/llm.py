@@ -5,22 +5,21 @@ from langchain_openai import ChatOpenAI
 
 load_dotenv()
 
+UNLIMITED_MAX_TOKENS = 65536
+REASONING_EFFORT = "medium"
+
 
 def create_llm(
     temperature: float = 0.7,
-    max_tokens: int = 4096,
-    enable_thinking: bool = True,
+    max_tokens: int = UNLIMITED_MAX_TOKENS,
     thinking_token_budget: int | None = None,
     request_timeout: float = 1800.0,
 ) -> ChatOpenAI:
+    extra_body: dict = {"reasoning_effort": REASONING_EFFORT}
     if thinking_token_budget is not None:
-        extra_body = {
-            "reasoning_effort": "medium",
-            "thinking_token_budget": thinking_token_budget,
-        }
+        extra_body["thinking_token_budget"] = thinking_token_budget
         effective_max_tokens = thinking_token_budget + 2000
     else:
-        extra_body = {"enable_thinking": enable_thinking}
         effective_max_tokens = max_tokens
 
     return ChatOpenAI(
