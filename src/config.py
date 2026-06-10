@@ -6,6 +6,8 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, model_validator
 
+from src.llm import UNLIMITED_MAX_TOKENS
+
 
 class ExperimentConfig(BaseModel):
     architecture: str
@@ -17,9 +19,8 @@ class ExperimentConfig(BaseModel):
     num_branches: int = 3  # L3 only: ToT branch count per planner call
     recursion_limit: int = 100
     temperature: float = 0.7
-    max_tokens: int = 4096
-    enable_thinking: bool = True  # kept for gridworld backward compat
-    thinking_token_budget: int | None = None  # swept variable (2k/4k/6k); triggers reasoning config
+    max_tokens: int = UNLIMITED_MAX_TOKENS
+    thinking_token_budget: int | None = None  # when set, caps reasoning chain length
     request_timeout: float = 1800.0
 
     @model_validator(mode="after")

@@ -55,7 +55,6 @@ class Level2BSolverCritic(BaseArchitecture):
         self.llm = create_llm(
             temperature=config.temperature,
             max_tokens=config.max_tokens,
-            enable_thinking=config.enable_thinking,
             thinking_token_budget=config.thinking_token_budget,
             request_timeout=config.request_timeout,
         )
