@@ -12,7 +12,7 @@ from src.llm import UNLIMITED_MAX_TOKENS
 class ExperimentConfig(BaseModel):
     architecture: str
     domain: str
-    difficulty: Literal["easy", "hard"]
+    difficulty: Literal["easy", "medium", "hard", "extra_hard"]
     num_runs: int = 5
     max_iterations: int = 10
     max_critic_iterations: int = 3

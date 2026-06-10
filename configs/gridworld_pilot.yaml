@@ -1,0 +1,34 @@
+# Gridworld B4 pilot — smoke-test all 4 levels against the live endpoint
+# before committing to the full matrix.
+#
+# Used to: (1) confirm the loop survives at every level after B1/B2/S4 changes,
+# (2) measure observed mean completion_tokens at medium (unlimited) so the
+# extra_hard budget in gridworld_final.yaml can be set = round(0.6 × mean).
+#
+# Run:
+#   poetry run python scripts/run_all.py \
+#     --config configs/gridworld_pilot.yaml \
+#     --num-tasks 1 \
+#     --output results/results_gridworld_pilot.jsonl
+
+experiments:
+  - architecture: level1
+    domain: gridworld
+    difficulty: easy
+    num_runs: 2
+
+  - architecture: level1
+    domain: gridworld
+    difficulty: medium
+    num_runs: 2
+
+  - architecture: level1
+    domain: gridworld
+    difficulty: hard
+    num_runs: 2
+
+  - architecture: level1
+    domain: gridworld
+    difficulty: extra_hard
+    num_runs: 2
+    thinking_token_budget: 2000  # throwaway; just validates the truncation knob fires

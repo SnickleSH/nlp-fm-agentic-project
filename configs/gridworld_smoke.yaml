@@ -1,0 +1,25 @@
+# Gridworld smoke matrix — every (arch, difficulty) cell once.
+# 12 conditions × 1 task × 1 run = 12 runs total. Used to confirm the
+# end-to-end loop survives after B1/B2/S4 refactor for every cell of the
+# matrix before committing to the full B5 sweep.
+
+experiments:
+  # ---- easy
+  - {architecture: level1,  domain: gridworld, difficulty: easy, num_runs: 1}
+  - {architecture: level2a, domain: gridworld, difficulty: easy, num_runs: 1}
+  - {architecture: level2b, domain: gridworld, difficulty: easy, num_runs: 1, max_critic_iterations: 2}
+
+  # ---- medium
+  - {architecture: level1,  domain: gridworld, difficulty: medium, num_runs: 1}
+  - {architecture: level2a, domain: gridworld, difficulty: medium, num_runs: 1}
+  - {architecture: level2b, domain: gridworld, difficulty: medium, num_runs: 1, max_critic_iterations: 2}
+
+  # ---- hard
+  - {architecture: level1,  domain: gridworld, difficulty: hard, num_runs: 1}
+  - {architecture: level2a, domain: gridworld, difficulty: hard, num_runs: 1}
+  - {architecture: level2b, domain: gridworld, difficulty: hard, num_runs: 1, max_critic_iterations: 2}
+
+  # ---- extra_hard (budget locked from B4)
+  - {architecture: level1,  domain: gridworld, difficulty: extra_hard, num_runs: 1, thinking_token_budget: 1500}
+  - {architecture: level2a, domain: gridworld, difficulty: extra_hard, num_runs: 1, thinking_token_budget: 1500}
+  - {architecture: level2b, domain: gridworld, difficulty: extra_hard, num_runs: 1, max_critic_iterations: 2, thinking_token_budget: 1500}
