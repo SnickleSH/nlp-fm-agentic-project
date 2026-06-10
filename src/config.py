@@ -14,6 +14,7 @@ class ExperimentConfig(BaseModel):
     num_runs: int = 5
     max_iterations: int = 10
     max_critic_iterations: int = 3
+    num_branches: int = 3  # L3 only: ToT branch count per planner call
     recursion_limit: int = 100
     temperature: float = 0.7
     max_tokens: int = 4096

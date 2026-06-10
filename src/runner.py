@@ -44,6 +44,8 @@ class RunResult(BaseModel):
     # True when any single call's completion_tokens ≈ max_tokens ceiling
     # (thinking_token_budget + 2000), meaning output was near the hard cap.
     budget_saturated: bool = False
+    # L3 diagnostics: branch_count, mem_retrievals, mem_reuse_hits (empty for L1/L2A/L2B).
+    state_metadata: dict = {}
 
 
 def run_single(config: ExperimentConfig, task_id: int, run_id: int) -> RunResult:
@@ -117,6 +119,7 @@ def run_single(config: ExperimentConfig, task_id: int, run_id: int) -> RunResult
             revision_count=final_state.get("critic_iterations", 0),
             any_call_truncated=any_call_truncated,
             budget_saturated=budget_saturated,
+            state_metadata=final_state.get("metadata", {}),
         )
     except Exception as e:
         elapsed = time.time() - start
