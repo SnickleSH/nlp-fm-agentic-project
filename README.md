@@ -27,7 +27,7 @@ All multi-agent pipelines are implemented using [LangGraph](https://github.com/l
 | **Level 1** | Single-Agent Baseline | `START -> agent [-> tools -> agent]* -> END` | Implemented |
 | **Level 2A** | Planner + Executor | `START -> planner -> executor [-> tools -> executor]* -> END` | Implemented |
 | **Level 2B** | Solver + Critic | `START -> solver -> critic -> [solver ↔ critic]* -> END` | Implemented |
-| **Level 3** | Adaptive (ToT + Episodic Memory) | Multi-node with branching, scoring, and memory retrieval | Planned |
+| **Level 3** | Adaptive (ToT + Episodic Memory) | `START -> planner -> critic -> executor [-> tools -> executor]* -> END` | Implemented |
 
 ### Level 1 — Single-Agent Baseline
 A single LLM call with no explicit planning or persistent memory. For interactive domains (gridworld), uses a standard ReAct tool-calling loop.
@@ -38,65 +38,96 @@ A two-node linear pipeline. The **planner** generates a step-by-step strategy, a
 ### Level 2B — Solver + Critic
 A cyclic graph where the **solver** proposes a solution and the **critic** evaluates it against the task rules. If rejected, the state routes back to the solver with feedback for a retry, up to `max_critic_iterations` (default 3). The critic is an LLM-based self-review and never sees the ground truth. For interactive domains the solver runs a tool-calling loop before each critique (`START -> solver [-> tools -> solver]* -> critic -> {solver | END}`); for non-interactive domains it is a single solve call per cycle.
 
-### Level 3 — Adaptive System *(planned)*
-Extends Level 2B with **Tree-of-Thought** branching (planner generates multiple continuations, critic scores them, executor acts on the best) and **Episodic Memory** (saves execution logs to a persistent memory bank for retrieval in future runs).
+### Level 3 — Adaptive System
+Extends Level 2B with **Tree-of-Thought (ToT)** branching and **Episodic Memory**. The **planner** retrieves relevant past episodes from a frozen memory bank, then generates `num_branches` (default 3) candidate solution approaches stored in `state["branches"]`. The **critic** scores each branch and commits the best to `state["selected_branch"]`. The **executor** carries out the selected branch (tool-calling loop for interactive domains, single call for logic). On exit the run is written to the memory bank. Role prompts (planner / critic / executor) are domain-agnostic defaults; domain owners can override via subclassing. The memory bank is built once in a pre-pass over a held-out population set, frozen, and committed as a read-only artifact — runs stay independent and reproducible. L3 diagnostics (`branch_count`, `mem_retrievals`, `mem_reuse_hits`) are written to `state["metadata"]` and persisted in `RunResult.state_metadata`.
 
 ## Domains
 
 | Domain | Type | Status |
 |--------|------|--------|
 | **Gridworld** | Interactive environment (text-based simulation) | Implemented |
-| **Logic Puzzles** | Reasoning tasks (constraint satisfaction) | Planned |
+| **Logic Puzzles** | Reasoning tasks (constraint satisfaction) | Implemented |
 
 ### Gridworld
 A custom text-based grid simulation where the agent navigates from a start position to a goal, avoiding walls. The agent interacts via LangChain tool calls (`move_up`, `move_down`, `move_left`, `move_right`), receiving text observations after each step.
 
-### Logic Puzzles *(planned)*
-Structured constraint satisfaction problems requiring agents to hold multiple rules in context and deduce answers without external feedback loops. Non-interactive — the LLM reasons and outputs an answer directly.
+### Logic Puzzles
+Structured constraint satisfaction problems from the [`arg-tech/MysteryZebra`](https://huggingface.co/datasets/arg-tech/MysteryZebra) dataset. Agents must deduce a complete grid assignment (attributes × positions) from a set of natural-language clues. Non-interactive — the LLM reasons and outputs a JSON answer directly; no tool calls. Scored by cell-accuracy (fraction of correct attribute-position assignments), with `success=True` only for a perfect grid.
 
 ## Difficulty Settings
 
-| Setting | Gridworld | Logic Puzzles |
-|---------|-----------|---------------|
-| **Easy** | 4x4 grid, full observability, few walls, goal 3–5 steps away | Short puzzles, explicit rules, low ambiguity |
-| **Hard** | 8x8 grid, partial observability (view radius = 1), maze-like walls, goal 10–15 steps away | Complex puzzles, implicit rules, noisy/ambiguous inputs |
+Logic puzzles use a 4-level difficulty ladder that varies two axes — grid size and `thinking_token_budget` — while holding the puzzle grade constant at **level3**. Gridworld varies grid size, observability (fog), and budget.
+
+
+### Logic puzzle dataset
+
+Puzzles come from [`arg-tech/MysteryZebra`](https://huggingface.co/datasets/arg-tech/MysteryZebra).
+
+**Chosen grade: `level3`** — determined by a pilot that ran L1 at unlimited vs. budget=1500 across grades level2–level4:
+
+| grade  | unlimited avg | 1500 avg | Δ    |
+|--------|---------------|----------|------|
+| level2 | 1.00          | 0.46     | 0.54 |
+| **level3** | **1.00**  | **0.72** | **0.28** |
+| level4 | 1.00          | 0.10     | 0.90 |
+
+Level3 is the discrimination zone: unlimited solves perfectly, budget=1500 clearly degrades, but without near-zero collapse (level4) that would prevent architecture-level differentiation. The same grade is used for both 3×3 and 5×5 so the internal puzzle grade is not a confound across difficulty levels.
+
+**Pinned puzzle IDs** (selection is independent of HuggingFace ordering):
+
+| Difficulty | IDs |
+|------------|-----|
+| easy (3×3) | `Pt2_3x3_level3-0` … `Pt2_3x3_level3-4` |
+| medium / hard / extra_hard (5×5) | `Pt2_5x5_level3-0` … `Pt2_5x5_level3-4` |
 
 ## Project Structure
 
 ```
 src/
-├── __init__.py
 ├── config.py                        # ExperimentConfig (Pydantic), YAML loader
-├── llm.py                           # create_llm() -> ChatOpenAI for ELTE endpoint
-├── state.py                         # LangGraph TypedDict state schemas
-├── metrics.py                       # MetricsCallback (token/step tracking)
-├── runner.py                        # run_single() orchestrator, RunResult model
+├── llm.py                           # create_llm() — ChatOpenAI for ELTE endpoint; UNLIMITED_MAX_TOKENS
+├── state.py                         # AgentState TypedDict (shared by all architectures)
+├── metrics.py                       # MetricsCallback (token/step/finish-reason tracking)
+├── runner.py                        # run_single(), RunResult, dedup/resume helpers
 ├── architectures/
 │   ├── __init__.py                  # get_architecture() factory
 │   ├── base.py                      # BaseArchitecture ABC
-│   ├── level1_baseline.py           # Single LLM call
-│   └── level2a_planner_executor.py  # Linear planner -> executor
+│   ├── level1_baseline.py           # Single LLM call (ReAct loop for interactive domains)
+│   ├── level2a_planner_executor.py  # Linear: planner -> executor
+│   ├── level2b_solver_critic.py     # Cyclic: solver <-> critic up to max_critic_iterations
+│   ├── level3_adaptive.py           # ToT + episodic memory: planner -> critic -> executor
+│   └── memory.py                    # EpisodicMemory, NoOpMemory (stub until bank is built)
 └── domains/
     ├── __init__.py                  # get_domain() factory
     ├── base.py                      # BaseDomain ABC, Task/EvaluationResult models
-    └── gridworld/
-        ├── __init__.py
-        ├── domain.py                # GridworldDomain
-        ├── engine.py                # GridWorld simulation engine
-        └── tools.py                 # LangChain tools: move_up/down/left/right
+    ├── gridworld/
+    │   ├── domain.py                # GridworldDomain
+    │   ├── engine.py                # GridWorld simulation engine (4-level difficulty)
+    │   └── tools.py                 # LangChain tools: move_up/down/left/right
+    ├── logic_puzzles/
+    │   ├── domain.py                # LogicPuzzlesDomain
+    │   └── engine.py                # Puzzle loader, PINNED_*_IDS, parser, scorer
+    └── preprocessing/
+        └── gridworld.py             # Gridworld results -> common analysis schema
 configs/
-└── experiments.yaml                 # Experiment matrix definition
+├── experiments.yaml                 # Default gridworld smoke-test matrix
+├── gridworld_final.yaml             # Full gridworld 4×4 sweep
+├── gridworld_pilot.yaml             # Gridworld pilot runs
+├── gridworld_smoke.yaml             # Quick gridworld sanity check
+└── full_sweep_logic.yaml            # Logic puzzle full sweep (pre-K0; superseded by logic_final.yaml)
 scripts/
-├── run_experiment.py                # CLI: run single condition
-├── run_all.py                       # Run full experiment matrix
-└── analyze_results.py               # Aggregate results, generate plots
-notebooks/
-└── analysis.ipynb                   # Interactive results exploration
-results/
-└── .gitkeep                         # Populated by runs (git-ignored)
+├── run_all.py                       # Run experiment matrix from YAML; resume-safe
+├── run_experiment.py                # CLI: run a single condition
+├── analyze_results.py               # Aggregate results, generate plots
+├── k0_pilot.py                      # K0 grade pilot (level2–4 vs budget)
+└── test_logic_pipeline.py           # Logic pipeline smoke test
+results/                             # git-ignored; populated by runs
+├── logic_final.jsonl                # Target: full logic 4×4 matrix (K5)
+└── results_gridworld.jsonl          # Target: full gridworld 4×4 matrix (B5)
 docs/
-├── task_description.html            # Course task description
-└── draft.md                         # Project draft with research questions
+├── build_data_roadmap.md            # Task breakdown and progress tracking
+├── roadmap.md                       # Execution roadmap (analysis phase onward)
+└── decisions.md                     # Key design decisions log
 ```
 
 ## Setup & Installation
@@ -131,55 +162,73 @@ Refer to the [ELTE LLM endpoint tutorial](https://github.com/elte-nlp/elte-nlp-c
 ### Run a single experiment
 
 ```bash
-python scripts/run_experiment.py --architecture level1 --domain gridworld --difficulty easy --num-runs 3
+poetry run python scripts/run_experiment.py --architecture level1 --domain gridworld --difficulty easy --num-runs 3
 ```
 
 ### Run the full experiment matrix
 
 ```bash
-python scripts/run_all.py
+poetry run python scripts/run_all.py --config configs/gridworld_final.yaml --output results/results_gridworld.jsonl
 ```
 
-This reads `configs/experiments.yaml` and runs all defined conditions. Results are saved to `results/results.jsonl`.
+Scoped by domain or architecture to avoid cross-partner interference:
+
+```bash
+# Logic puzzles track (Kristóf)
+poetry run python scripts/run_all.py --config configs/logic_final.yaml --num-tasks 5 --output results/logic_final.jsonl
+
+# Gridworld track (Benedek)
+poetry run python scripts/run_all.py --config configs/gridworld_final.yaml --output results/results_gridworld.jsonl
+```
+
+Runs are resume-safe — already-completed `(architecture, domain, difficulty, task_id, run_id, budget)` tuples are skipped on restart.
 
 ### Analyze results
 
 ```bash
-python scripts/analyze_results.py
+poetry run python scripts/analyze_results.py
 ```
 
 Or use the interactive notebook:
 
 ```bash
-jupyter notebook notebooks/analysis.ipynb
+poetry run jupyter notebook notebooks/puzzles_analysis.ipynb
 ```
 
 ## Evaluation Metrics
 
 **Task performance:**
-- Task success rate
-- Score (0.0–1.0, supports partial credit)
+- `success` — binary (True only for perfect grid / reached goal)
+- `score` ∈ [0, 1] — cell-accuracy for logic; goal-or-progress for gridworld
 
 **Efficiency:**
-- Token usage (prompt / completion / total)
-- Runtime (seconds)
-- Number of LLM calls
-- Number of reasoning / tool steps
+- `total_tokens` — prompt + completion tokens (cost proxy)
+- `num_llm_calls` — total LLM invocations per run (architecture-agnostic overhead)
+- `runtime_seconds`
+
+**Failure diagnosis:**
+- `parse_failure` — model output could not be parsed as a solution
+- `any_call_truncated` — at least one call hit `finish_reason=length`
+- `budget_saturated` — completion tokens approached the `max_tokens` ceiling
+- `revision_count` — critic iterations used (L2B / L3 only)
+
+**L3 diagnostics** (in `state_metadata`):
+- `branch_count` — ToT branches generated by the planner
+- `mem_retrievals` — episodes retrieved from the memory bank
+- `mem_reuse_hits` — retrievals that influenced the final answer
 
 ## Experimental Matrix
 
-All architectures are evaluated across all domains at both difficulty levels, with 3–5 runs per condition to account for LLM variance.
+4 architectures × 4 difficulty levels × 2 domains = 32 conditions. N=8 runs per condition (N=10 at extra_hard). Results written to `results/logic_final.jsonl` and `results/results_gridworld.jsonl`.
 
-| Architecture | Domain | Easy | Hard |
-|-------------|--------|------|------|
-| Level 1 (Baseline) | Gridworld | `<score>` | `<score>` |
-| Level 2A (Planner + Executor) | Gridworld | `<score>` | `<score>` |
-| Level 2B (Solver + Critic) | Gridworld | `<score>` | `<score>` |
-| Level 3 (Adaptive) | Gridworld | `<score>` | `<score>` |
-| Level 1 (Baseline) | Logic Puzzles | `<score>` | `<score>` |
-| Level 2A (Planner + Executor) | Logic Puzzles | `<score>` | `<score>` |
-| Level 2B (Solver + Critic) | Logic Puzzles | `<score>` | `<score>` |
-| Level 3 (Adaptive) | Logic Puzzles | `<score>` | `<score>` |
+### Logic Puzzles
+
+| Architecture | easy (3×3 ∞) | medium (5×5 ∞) | hard (5×5 @4k) | extra_hard (5×5 @1.5k) |
+|---|---|---|---|---|
+| L1 Baseline | — | — | — | — |
+| L2A Planner+Executor | — | — | — | — |
+| L2B Solver+Critic | — | — | — | — |
+| L3 Adaptive (ToT+Mem) | — | — | — | — |
 
 ## Extending the Framework
 
@@ -208,32 +257,32 @@ All architectures are evaluated across all domains at both difficulty levels, wi
 
 ## Team & Contributions
 
-| Member | Responsibilities |
-|--------|-----------------|
-| *Member 1* | ... |
-| *Member 2* | ... |
+| Member | Domain | Architecture ownership |
+|--------|--------|------------------------|
+| **Kristóf** | Logic Puzzles | L2B (Solver+Critic), L3 base graph + ToT |
+| **Benedek** | Gridworld | L1, L2A, L3 episodic memory |
+
+Shared: repo setup, `src/state.py`, `src/runner.py`, `src/config.py`, `src/llm.py`, `src/metrics.py`, analysis notebook.
 
 ## Collaboration & Ownership
 
-### File ownership
+### Shared files — coordinate before editing
 
-**Shared - Touch these files carefully**
-`src/state.py`, `src/runner.py`, `src/architectures/base.py`, `src/architectures/__init__.py`, `src/domains/base.py`, `src/domains/__init__.py`, `src/config.py`, `src/llm.py`, `src/metrics.py`, `scripts/*`, `configs/experiments.yaml`
-
+`src/state.py`, `src/runner.py`, `src/architectures/base.py`, `src/architectures/__init__.py`, `src/domains/base.py`, `src/domains/__init__.py`, `src/config.py`, `src/llm.py`, `src/metrics.py`, `scripts/run_all.py`
 
 ### Running experiments independently
 
-Use `--domain` and `--architecture` to scope runs so neither partner accidentally triggers the other's configs:
+Use `--config` to point at domain-specific YAML files so neither partner accidentally triggers the other's conditions:
 
 ```bash
-# Member 1 — logic puzzles only
-python scripts/run_all.py --domain logic_puzzles --output results/results_logic.jsonl
+# Kristóf — logic puzzles
+poetry run python scripts/run_all.py --config configs/logic_final.yaml --num-tasks 5 --output results/logic_final.jsonl
 
-# Member 2 — gridworld only
-python scripts/run_all.py --domain gridworld --output results/results_gridworld.jsonl
+# Benedek — gridworld
+poetry run python scripts/run_all.py --config configs/gridworld_final.yaml --output results/results_gridworld.jsonl
 ```
 
-Merge the two JSONL files in the analysis step — they share the same schema.
+Both files write to the same common schema (see `docs/build_data_roadmap.md` § 5). The analysis notebook loads both and treats them identically.
 
 ## References
 
