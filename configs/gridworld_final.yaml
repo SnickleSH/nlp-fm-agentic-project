@@ -77,17 +77,17 @@ experiments:
     domain: gridworld
     difficulty: extra_hard
     num_runs: 10
-    thinking_token_budget: 1500  # round(0.6 × mean per-run peak per-call completion from B4 medium pilot)
+    thinking_token_budget: 500  # tightened from 1500 — at 1500 the cap never fired on L1/extra_hard (max per-call completion 648–1678, median ~1100)
 
   - architecture: level2a
     domain: gridworld
     difficulty: extra_hard
     num_runs: 10
-    thinking_token_budget: 1500  # round(0.6 × mean per-run peak per-call completion from B4 medium pilot)
+    thinking_token_budget: 500  # tightened from 1500 — at 1500 the cap never fired on L1/extra_hard (max per-call completion 648–1678, median ~1100)
 
   - architecture: level2b
     domain: gridworld
     difficulty: extra_hard
     num_runs: 10
     max_critic_iterations: 2
-    thinking_token_budget: 1500  # round(0.6 × mean per-run peak per-call completion from B4 medium pilot)
+    thinking_token_budget: 500  # tightened from 1500 — at 1500 the cap never fired on L1/extra_hard (max per-call completion 648–1678, median ~1100)

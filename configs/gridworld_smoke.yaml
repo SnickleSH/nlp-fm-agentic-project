@@ -20,6 +20,6 @@ experiments:
   - {architecture: level2b, domain: gridworld, difficulty: hard, num_runs: 1, max_critic_iterations: 2}
 
   # ---- extra_hard (budget locked from B4)
-  - {architecture: level1,  domain: gridworld, difficulty: extra_hard, num_runs: 1, thinking_token_budget: 1500}
-  - {architecture: level2a, domain: gridworld, difficulty: extra_hard, num_runs: 1, thinking_token_budget: 1500}
-  - {architecture: level2b, domain: gridworld, difficulty: extra_hard, num_runs: 1, max_critic_iterations: 2, thinking_token_budget: 1500}
+  - {architecture: level1,  domain: gridworld, difficulty: extra_hard, num_runs: 1, thinking_token_budget: 500}
+  - {architecture: level2a, domain: gridworld, difficulty: extra_hard, num_runs: 1, thinking_token_budget: 500}
+  - {architecture: level2b, domain: gridworld, difficulty: extra_hard, num_runs: 1, max_critic_iterations: 2, thinking_token_budget: 500}

@@ -86,34 +86,36 @@ class GridWorld:
 
 # Locked level presets. Decoupling grid size, fog, view radius, max_steps, wall
 # count, and path-length range means each can be varied independently — the four
-# 'difficulty' labels just bundle a specific point in that space. extra_hard
-# shares hard's grid params; only the LLM-side thinking budget differs.
+# 'difficulty' labels just bundle a specific point in that space. max_steps is
+# set as a shrinking multiple of the optimal-path upper bound across the ladder
+# (easy 3×, medium 2.5×, hard 2×, extra_hard 1.5×) so the step budget tightens
+# at each level; extra_hard further tightens the LLM thinking budget in config.
 _LEVEL_PRESETS: dict[str, dict] = {
     "easy": {
         "width": 4, "height": 4,
         "fog": False, "view_radius": None,
-        "max_steps": 20,
+        "max_steps": 15,
         "num_walls_range": (1, 3),
         "path_len_range": (3, 5),
     },
     "medium": {
         "width": 6, "height": 6,
         "fog": False, "view_radius": None,
-        "max_steps": 30,
+        "max_steps": 20,
         "num_walls_range": (5, 10),
         "path_len_range": (5, 8),
     },
     "hard": {
         "width": 6, "height": 6,
         "fog": True, "view_radius": 1,
-        "max_steps": 40,
+        "max_steps": 16,
         "num_walls_range": (5, 10),
         "path_len_range": (5, 8),
     },
     "extra_hard": {
         "width": 6, "height": 6,
         "fog": True, "view_radius": 1,
-        "max_steps": 40,
+        "max_steps": 12,
         "num_walls_range": (5, 10),
         "path_len_range": (5, 8),
     },
