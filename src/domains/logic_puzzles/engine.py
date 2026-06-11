@@ -42,29 +42,42 @@ def _parse_solution(solution_str: str) -> dict[str, list[str]]:
 		raise ValueError("SolutionGrid is not a dict")
 	return parsed
 
+PUZZLE_GRADE = "level3"
 
-def _is_easy(record: dict[str, str]) -> bool:
-	"""Pt2 3×3 puzzles — fast reference floor."""
-	return record["ID"].startswith("Pt2_") and "3x3" in record["ID"]
+# Pinned IDs — first five sorted records per grid at the chosen grade.
+# Hardcoding these makes task selection independent of HuggingFace ordering.
+PINNED_EASY_IDS: list[str] = [
+	"Pt2_3x3_level3-0",
+	"Pt2_3x3_level3-1",
+	"Pt2_3x3_level3-2",
+	"Pt2_3x3_level3-3",
+	"Pt2_3x3_level3-4",
+]
 
-
-def _is_hard(record: dict[str, str]) -> bool:
-	"""Pt2 5×5 puzzles — main discrimination sweep."""
-	return record["ID"].startswith("Pt2_") and "5x5" in record["ID"]
+# medium / hard / extra_hard all use the same 5×5 pool; the difficulty
+# distinction comes from thinking_token_budget in the experiment config.
+PINNED_HARD_IDS: list[str] = [
+	"Pt2_5x5_level3-0",
+	"Pt2_5x5_level3-1",
+	"Pt2_5x5_level3-2",
+	"Pt2_5x5_level3-3",
+	"Pt2_5x5_level3-4",
+]
 
 
 def _filter_by_difficulty(difficulty: str) -> list[dict[str, str]]:
-	if difficulty not in {"easy", "hard"}:
+	if difficulty not in {"easy", "medium", "hard", "extra_hard"}:
 		raise ValueError(f"Unknown difficulty: {difficulty!r}")
 	records = _load_raw_records()
-	predicate = _is_easy if difficulty == "easy" else _is_hard
-	filtered = [record for record in records if predicate(record)]
-	if not filtered:
+	by_id = {r["ID"]: r for r in records}
+	ids = PINNED_EASY_IDS if difficulty == "easy" else PINNED_HARD_IDS
+	result = [by_id[pid] for pid in ids if pid in by_id]
+	if not result:
 		raise ValueError(
-			f"No records matched difficulty={difficulty!r}. "
-			"Check filter predicates."
+			f"Pinned puzzle IDs not found in dataset for difficulty={difficulty!r}. "
+			"Re-check PINNED_EASY_IDS / PINNED_HARD_IDS."
 		)
-	return filtered
+	return result
 
 
 def get_puzzle(difficulty: str, task_id: int) -> LogicPuzzle:
@@ -263,10 +276,10 @@ def _normalize(value: str) -> str:
 
 
 if __name__ == "__main__":
-	print(f"Easy pool size: {pool_size('easy')}")
-	print(f"Hard pool size: {pool_size('hard')}")
+	for d in ("easy", "medium", "hard", "extra_hard"):
+		print(f"{d} pool size: {pool_size(d)}")
 
-	for difficulty in ("easy", "hard"):
+	for difficulty in ("easy", "medium", "hard", "extra_hard"):
 		puzzle = get_puzzle(difficulty, task_id=0)
 		print(f"\n--- {difficulty.upper()} example ---")
 		print(f"ID: {puzzle.puzzle_id}")
