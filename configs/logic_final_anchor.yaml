@@ -1,0 +1,16 @@
+# Saturation anchors: easy (3x3) + medium (5x5), both unlimited. Unlimited needs S4 — run after it.
+# --num-tasks 3: levels are saturated, fewer puzzles is fine. N: easy=3 (confirmed 1.00), medium=4 (inferred).
+# Run: poetry run python scripts/run_all.py --config configs/logic_final_anchor.yaml --num-tasks 3 --output results/logic_final.jsonl
+
+experiments:
+  # easy — 3x3, unlimited
+  - {architecture: level1,  domain: logic_puzzles, difficulty: easy, num_runs: 3}
+  - {architecture: level2a, domain: logic_puzzles, difficulty: easy, num_runs: 3}
+  - {architecture: level2b, domain: logic_puzzles, difficulty: easy, num_runs: 3, max_critic_iterations: 2}
+  # - {architecture: level3, domain: logic_puzzles, difficulty: easy, num_runs: 3}
+
+  # medium — 5x5, unlimited
+  - {architecture: level1,  domain: logic_puzzles, difficulty: hard, num_runs: 4}
+  - {architecture: level2a, domain: logic_puzzles, difficulty: hard, num_runs: 4}
+  - {architecture: level2b, domain: logic_puzzles, difficulty: hard, num_runs: 4, max_critic_iterations: 2}
+  # - {architecture: level3, domain: logic_puzzles, difficulty: hard, num_runs: 4}
