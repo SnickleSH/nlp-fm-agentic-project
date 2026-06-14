@@ -7,10 +7,10 @@ experiments:
   - {architecture: level1,  domain: logic_puzzles, difficulty: easy, num_runs: 3}
   - {architecture: level2a, domain: logic_puzzles, difficulty: easy, num_runs: 3}
   - {architecture: level2b, domain: logic_puzzles, difficulty: easy, num_runs: 3, max_critic_iterations: 2}
-  # - {architecture: level3, domain: logic_puzzles, difficulty: easy, num_runs: 3}
+  - {architecture: level3,  domain: logic_puzzles, difficulty: easy, num_runs: 3, max_critic_iterations: 2}
 
   # medium — 5x5, unlimited
   - {architecture: level1,  domain: logic_puzzles, difficulty: hard, num_runs: 4}
   - {architecture: level2a, domain: logic_puzzles, difficulty: hard, num_runs: 4}
   - {architecture: level2b, domain: logic_puzzles, difficulty: hard, num_runs: 4, max_critic_iterations: 2}
-  # - {architecture: level3, domain: logic_puzzles, difficulty: hard, num_runs: 4}
+  - {architecture: level3,  domain: logic_puzzles, difficulty: hard, num_runs: 4, max_critic_iterations: 2}

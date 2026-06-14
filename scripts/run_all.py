@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from src.architectures.memory import RecentSuccessMemory
 from src.config import load_experiment_configs
 from src.runner import load_completed_keys, run_single, save_result
 
@@ -35,6 +36,13 @@ def main() -> None:
         print(f"Condition {i}/{len(configs)}: {label} ({total_runs} runs)")
         print(f"{'='*60}")
 
+        # Per (domain, difficulty) episodic memory bank for L3 rows (S2 decision).
+        # Bank lives for the duration of this condition and is dropped between rows.
+        # Resume caveat: a partial L3 row restarted from disk gets a fresh empty bank
+        # — the resumed runs are NOT equivalent to the originals. Delete the partial
+        # rows from the JSONL before resuming if strict comparability matters.
+        memory = RecentSuccessMemory() if config.architecture == "level3" else None
+
         for task_id in range(args.num_tasks):
             for run_id in range(config.num_runs):
                 key = (
@@ -46,7 +54,7 @@ def main() -> None:
                     print(f"  task={task_id} run={run_id} ... SKIP (already logged)")
                     continue
                 print(f"  task={task_id} run={run_id} ... ", end="", flush=True)
-                result = run_single(config, task_id, run_id)
+                result = run_single(config, task_id, run_id, memory=memory)
                 save_result(result, args.output)
                 completed.add(key)
                 status = "OK" if result.success else "FAIL"

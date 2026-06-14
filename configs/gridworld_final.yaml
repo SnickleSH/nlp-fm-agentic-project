@@ -38,6 +38,12 @@ experiments:
     num_runs: 8
     max_critic_iterations: 2
 
+  - architecture: level3
+    domain: gridworld
+    difficulty: easy
+    num_runs: 8
+    max_critic_iterations: 2
+
   # ---- medium — 6×6 full-obs, unlimited
   - architecture: level1
     domain: gridworld
@@ -55,6 +61,12 @@ experiments:
     num_runs: 8
     max_critic_iterations: 2
 
+  - architecture: level3
+    domain: gridworld
+    difficulty: medium
+    num_runs: 8
+    max_critic_iterations: 2
+
   # ---- hard — 6×6 fog, unlimited
   - architecture: level1
     domain: gridworld
@@ -67,6 +79,12 @@ experiments:
     num_runs: 8
 
   - architecture: level2b
+    domain: gridworld
+    difficulty: hard
+    num_runs: 8
+    max_critic_iterations: 2
+
+  - architecture: level3
     domain: gridworld
     difficulty: hard
     num_runs: 8
@@ -91,3 +109,10 @@ experiments:
     num_runs: 10
     max_critic_iterations: 2
     thinking_token_budget: 500  # tightened from 1500 — at 1500 the cap never fired on L1/extra_hard (max per-call completion 648–1678, median ~1100)
+
+  - architecture: level3
+    domain: gridworld
+    difficulty: extra_hard
+    num_runs: 10
+    max_critic_iterations: 2
+    thinking_token_budget: 500  # tightened from 1500 — same calibration as L2B

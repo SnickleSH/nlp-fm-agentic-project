@@ -77,7 +77,10 @@ class Level3Adaptive(BaseArchitecture):
     ) -> CompiledStateGraph:
         self.domain = domain
         self.config = config
-        self.memory = memory or NoOpMemory()
+        # Explicit None check: an empty RecentSuccessMemory has len()==0 and is
+        # falsy under `or`, which would silently swap in a NoOpMemory at the start
+        # of every run and never accumulate episodes.
+        self.memory = memory if memory is not None else NoOpMemory()
         self.llm = create_llm(
             temperature=config.temperature,
             max_tokens=config.max_tokens,
@@ -130,17 +133,31 @@ class Level3Adaptive(BaseArchitecture):
     def _planner_node(self, state: AgentState) -> dict:
         task = Task.model_validate(state["task"])
 
-        retrieved = self.memory.retrieve(state["task"], k=2)
+        # The episode shape stores `domain` as the lowercased domain class name; mirror
+        # that here so retrieval can filter by the same key without changing the Protocol.
+        domain_key = self.domain.__class__.__name__.lower()
+        retrieve_task = {**state["task"], "domain": domain_key}
+        retrieved = self.memory.retrieve(retrieve_task, k=2)
         retrieved_episodes = retrieved if retrieved else []
 
         memory_context = ""
+        sentinels: list[str] = []
         if retrieved_episodes:
-            summaries = [ep.get("strategy_summary", "") for ep in retrieved_episodes]
-            memory_context = (
-                "Similar solved problems (learned strategies):\n"
-                + "\n".join(f"- {s}" for s in summaries if s)
-                + "\n\n"
-            )
+            summary_lines = []
+            for idx, ep in enumerate(retrieved_episodes, 1):
+                summary = ep.get("strategy_summary", "")
+                if not summary:
+                    continue
+                tag = f"[MEM-{idx}]"
+                sentinels.append(tag)
+                summary_lines.append(f"- {tag} {summary}")
+            if summary_lines:
+                memory_context = (
+                    "Similar solved problems (learned strategies). "
+                    "If you reuse one, keep its [MEM-N] tag in your plan:\n"
+                    + "\n".join(summary_lines)
+                    + "\n\n"
+                )
 
         system_text = self.domain.format_system_prompt(task)
         task_text = self.domain.format_task_prompt(task)
@@ -158,10 +175,14 @@ class Level3Adaptive(BaseArchitecture):
             response = self.llm.invoke(messages)
             branches.append({"content": response.content, "score": 0.0})
 
+        reuse_hits = sum(
+            1 for b in branches if any(tag in b["content"] for tag in sentinels)
+        )
+
         metadata = state.get("metadata", {})
         metadata["branch_count"] = self.config.num_branches
         metadata["mem_retrievals"] = len(retrieved_episodes)
-        metadata["mem_reuse_hits"] = 0
+        metadata["mem_reuse_hits"] = reuse_hits
 
         return {
             "branches": branches,
@@ -302,9 +323,11 @@ class Level3Adaptive(BaseArchitecture):
 
         self.memory.write(episode)
 
+        # Carry counters forward from the planner — _planner_node already set them based
+        # on the most recent ToT pass; don't zero them here.
         metadata = state.get("metadata", {})
-        metadata["branch_count"] = self.config.num_branches
-        metadata["mem_retrievals"] = len(state.get("retrieved_episodes", []))
-        metadata["mem_reuse_hits"] = 0
+        metadata.setdefault("branch_count", self.config.num_branches)
+        metadata.setdefault("mem_retrievals", len(state.get("retrieved_episodes", [])))
+        metadata.setdefault("mem_reuse_hits", 0)
 
         return {"metadata": metadata, "messages": [AIMessage(content="[FINALIZED]")]}
