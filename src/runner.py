@@ -10,6 +10,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel
 
 from src.architectures import get_architecture
+from src.architectures.memory import EpisodicMemory
 from src.config import ExperimentConfig
 from src.domains import get_domain
 from src.metrics import MetricsCallback, TokenUsage
@@ -48,12 +49,20 @@ class RunResult(BaseModel):
     state_metadata: dict = {}
 
 
-def run_single(config: ExperimentConfig, task_id: int, run_id: int) -> RunResult:
+def run_single(
+    config: ExperimentConfig,
+    task_id: int,
+    run_id: int,
+    memory: EpisodicMemory | None = None,
+) -> RunResult:
     domain = get_domain(config.domain)
     arch = get_architecture(config.architecture)
     task = domain.generate_task(config.difficulty, task_id)
     metrics_cb = MetricsCallback()
-    graph = arch.build_graph(domain, config)
+    if memory is not None:
+        graph = arch.build_graph(domain, config, memory=memory)
+    else:
+        graph = arch.build_graph(domain, config)
 
     system_prompt = domain.format_system_prompt(task)
     task_prompt = domain.format_task_prompt(task)

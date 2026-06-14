@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from src.architectures.memory import RecentSuccessMemory
 from src.config import ExperimentConfig
 from src.runner import load_completed_keys, run_single, save_result
 
@@ -44,6 +45,9 @@ def main() -> None:
     if completed_keys:
         print(f"Resuming: {len(completed_keys)} run(s) already in {args.output}, will skip.")
 
+    # Per-condition episodic memory for L3 (S2 decision: reset between (domain, difficulty)).
+    memory = RecentSuccessMemory() if config.architecture == "level3" else None
+
     for task_id in range(args.num_tasks):
         for run_id in range(args.num_runs):
             done_count += 1
@@ -56,7 +60,7 @@ def main() -> None:
                 print(f"[{done_count}/{total}] task={task_id} run={run_id} ... SKIP (already logged)")
                 continue
             print(f"[{done_count}/{total}] task={task_id} run={run_id} ... ", end="", flush=True)
-            result = run_single(config, task_id, run_id)
+            result = run_single(config, task_id, run_id, memory=memory)
             save_result(result, args.output)
             completed_keys.add(key)
             status = "OK" if result.success else "FAIL"
