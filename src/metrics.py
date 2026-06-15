@@ -36,12 +36,12 @@ class MetricsCallback(BaseCallbackHandler):
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         self.llm_call_count += 1
+        call_prompt = 0
         call_completion = 0
         if response.llm_output and "token_usage" in response.llm_output:
             usage = response.llm_output["token_usage"]
-            self.prompt_tokens += usage.get("prompt_tokens", 0)
+            call_prompt = usage.get("prompt_tokens", 0)
             call_completion = usage.get("completion_tokens", 0)
-            self.completion_tokens += call_completion
 
         call_finish_reason = "unknown"
         for gen_list in response.generations:
@@ -49,11 +49,18 @@ class MetricsCallback(BaseCallbackHandler):
                 msg = getattr(gen, "message", None)
                 if msg is None:
                     continue
+                usage_metadata = getattr(msg, "usage_metadata", None) or {}
+                # Streaming path: llm_output["token_usage"] is absent, so fall
+                # back to usage_metadata (populated by stream_usage=True). Only
+                # used when the llm_output totals above are empty, to avoid
+                # double-counting the non-streaming path.
+                if not call_prompt:
+                    call_prompt = usage_metadata.get("input_tokens", 0)
+                if not call_completion:
+                    call_completion = usage_metadata.get("output_tokens", 0)
                 # Reasoning token breakdown (o1/o3 style; may populate on future
                 # Qwen3 endpoint upgrades).
-                details = (getattr(msg, "usage_metadata", None) or {}).get(
-                    "output_token_details", {}
-                )
+                details = usage_metadata.get("output_token_details", {})
                 self.reasoning_tokens += details.get("reasoning_tokens", 0)
                 # finish_reason per call — "stop" is also what budget exhaustion
                 # reports, so detection must use completion_tokens ≈ budget.
@@ -62,6 +69,8 @@ class MetricsCallback(BaseCallbackHandler):
                 if fr and fr != "unknown":
                     call_finish_reason = fr
 
+        self.prompt_tokens += call_prompt
+        self.completion_tokens += call_completion
         self._per_call_completion.append(call_completion)
         self._per_call_finish_reasons.append(call_finish_reason)
 
