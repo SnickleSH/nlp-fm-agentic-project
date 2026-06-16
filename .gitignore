@@ -59,6 +59,13 @@ data/processed/*
 # Results (populated by experiment runs)
 results/*
 !results/.gitkeep
+# Final committed datasets — domain files and the combined analysis-ready file
+!results/logic_final.jsonl
+!results/results_gridworld.jsonl
+!results/final_results.jsonl
+# Committed pilot evidence (consolidated; see configs/logic_pilot.yaml + scripts/k0_pilot.py)
+!results/logic_pilot.jsonl
+!results/k0_pilot.jsonl
 
 # Logs
 *.log
