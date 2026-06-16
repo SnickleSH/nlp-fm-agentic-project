@@ -1,0 +1,12 @@
+{"puzzle_id": "Pt2_5x5_level2-0", "budget": null, "success": true, "score": 1.0, "total_tokens": 12896, "elapsed_s": 193.9, "any_truncated": false, "error": null}
+{"puzzle_id": "Pt2_5x5_level2-0", "budget": 1500, "success": false, "score": 0.36, "total_tokens": 2293, "elapsed_s": 26.3, "any_truncated": false, "error": null}
+{"puzzle_id": "Pt2_5x5_level2-1", "budget": null, "success": true, "score": 1.0, "total_tokens": 12464, "elapsed_s": 2115.1, "any_truncated": false, "error": null}
+{"puzzle_id": "Pt2_5x5_level2-1", "budget": 1500, "success": false, "score": 0.56, "total_tokens": 2272, "elapsed_s": 28.2, "any_truncated": false, "error": null}
+{"puzzle_id": "Pt2_5x5_level3-0", "budget": null, "success": true, "score": 1.0, "total_tokens": 13530, "elapsed_s": 4032.8, "any_truncated": false, "error": null}
+{"puzzle_id": "Pt2_5x5_level3-0", "budget": 1500, "success": false, "score": 0.6, "total_tokens": 2319, "elapsed_s": 26.2, "any_truncated": false, "error": null}
+{"puzzle_id": "Pt2_5x5_level3-1", "budget": null, "success": true, "score": 1.0, "total_tokens": 15696, "elapsed_s": 237.0, "any_truncated": false, "error": null}
+{"puzzle_id": "Pt2_5x5_level3-1", "budget": 1500, "success": false, "score": 0.84, "total_tokens": 2407, "elapsed_s": 27.3, "any_truncated": false, "error": null}
+{"puzzle_id": "Pt2_5x5_level4-0", "budget": null, "success": true, "score": 1.0, "total_tokens": 14921, "elapsed_s": 225.0, "any_truncated": false, "error": null}
+{"puzzle_id": "Pt2_5x5_level4-0", "budget": 1500, "success": false, "score": 0.12, "total_tokens": 2356, "elapsed_s": 26.3, "any_truncated": false, "error": null}
+{"puzzle_id": "Pt2_5x5_level4-1", "budget": null, "success": true, "score": 1.0, "total_tokens": 15724, "elapsed_s": 2147.1, "any_truncated": false, "error": null}
+{"puzzle_id": "Pt2_5x5_level4-1", "budget": 1500, "success": false, "score": 0.08, "total_tokens": 2397, "elapsed_s": 27.3, "any_truncated": false, "error": null}

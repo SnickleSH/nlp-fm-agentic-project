@@ -1,0 +1,22 @@
+# Run:
+#   poetry run python scripts/run_all.py \
+#     --config configs/logic_pilot.yaml \
+#     --num-tasks 1 \
+#     --output results/logic_pilot.jsonl
+#
+# Analyse:
+#   poetry run python scripts/analyze_pilot.py
+
+experiments:
+  # --- A. Budget zone: L1 baseline across the budget range ---
+  - {architecture: level1, domain: logic_puzzles, difficulty: hard, num_runs: 5, thinking_token_budget: 1000}
+  - {architecture: level1, domain: logic_puzzles, difficulty: hard, num_runs: 5, thinking_token_budget: 1500}
+  - {architecture: level1, domain: logic_puzzles, difficulty: hard, num_runs: 5, thinking_token_budget: 2000}
+  - {architecture: level1, domain: logic_puzzles, difficulty: hard, num_runs: 5, thinking_token_budget: 3000}
+  - {architecture: level1, domain: logic_puzzles, difficulty: hard, num_runs: 5, thinking_token_budget: 6000}
+
+  # --- B. H2 gate: decomposition at the constrained (1500) and mid (4000) budgets ---
+  - {architecture: level2a, domain: logic_puzzles, difficulty: hard, num_runs: 5, thinking_token_budget: 1500}
+  - {architecture: level2a, domain: logic_puzzles, difficulty: hard, num_runs: 5, thinking_token_budget: 4000}
+  - {architecture: level2b, domain: logic_puzzles, difficulty: hard, num_runs: 5, max_critic_iterations: 3, thinking_token_budget: 1500}
+  - {architecture: level2b, domain: logic_puzzles, difficulty: hard, num_runs: 5, max_critic_iterations: 3, thinking_token_budget: 4000}
