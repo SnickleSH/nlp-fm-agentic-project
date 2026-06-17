@@ -3,14 +3,14 @@
 # Run: poetry run python scripts/run_all.py --config configs/logic_final_main.yaml --num-tasks 5 --output results/logic_final.jsonl
 
 experiments:
-  # hard — 5x5, 4000
+  # hard — 5x5, 4000 (difficulty is the conceptual level; engine routes non-easy to the 5x5 pool)
   - {architecture: level1,  domain: logic_puzzles, difficulty: hard, num_runs: 6,  thinking_token_budget: 4000}
   - {architecture: level2a, domain: logic_puzzles, difficulty: hard, num_runs: 6,  thinking_token_budget: 4000}
   - {architecture: level2b, domain: logic_puzzles, difficulty: hard, num_runs: 6,  max_critic_iterations: 2, thinking_token_budget: 4000}
   - {architecture: level3,  domain: logic_puzzles, difficulty: hard, num_runs: 6,  max_critic_iterations: 2, thinking_token_budget: 4000}
 
   # extra-hard — 5x5, 1500
-  - {architecture: level1,  domain: logic_puzzles, difficulty: hard, num_runs: 8,  thinking_token_budget: 1500}
-  - {architecture: level2a, domain: logic_puzzles, difficulty: hard, num_runs: 8,  thinking_token_budget: 1500}
-  - {architecture: level2b, domain: logic_puzzles, difficulty: hard, num_runs: 8,  max_critic_iterations: 2, thinking_token_budget: 1500}
-  - {architecture: level3,  domain: logic_puzzles, difficulty: hard, num_runs: 8,  max_critic_iterations: 2, thinking_token_budget: 1500}
+  - {architecture: level1,  domain: logic_puzzles, difficulty: extra_hard, num_runs: 8,  thinking_token_budget: 1500}
+  - {architecture: level2a, domain: logic_puzzles, difficulty: extra_hard, num_runs: 8,  thinking_token_budget: 1500}
+  - {architecture: level2b, domain: logic_puzzles, difficulty: extra_hard, num_runs: 8,  max_critic_iterations: 2, thinking_token_budget: 1500}
+  - {architecture: level3,  domain: logic_puzzles, difficulty: extra_hard, num_runs: 8,  max_critic_iterations: 2, thinking_token_budget: 1500}
