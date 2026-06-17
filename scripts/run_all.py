@@ -16,6 +16,12 @@ def main() -> None:
     parser.add_argument("--output", default="results/results.jsonl")
     parser.add_argument("--domain", default=None, help="Only run configs for this domain (e.g. logic_puzzles)")
     parser.add_argument("--architecture", default=None, help="Only run configs for this architecture (e.g. level1)")
+    parser.add_argument(
+        "--run-id-offset",
+        type=int,
+        default=0,
+        help="Add this offset to every run_id (lets two shells split num_runs without colliding on (task_id, run_id)).",
+    )
     args = parser.parse_args()
 
     configs = load_experiment_configs(args.config)
@@ -44,7 +50,8 @@ def main() -> None:
         memory = RecentSuccessMemory() if config.architecture == "level3" else None
 
         for task_id in range(args.num_tasks):
-            for run_id in range(config.num_runs):
+            for local_run_id in range(config.num_runs):
+                run_id = local_run_id + args.run_id_offset
                 key = (
                     config.architecture, config.domain, config.difficulty,
                     task_id, run_id, config.thinking_token_budget,
