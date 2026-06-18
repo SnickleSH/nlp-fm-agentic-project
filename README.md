@@ -39,7 +39,7 @@ A two-node linear pipeline. The **planner** generates a step-by-step strategy, a
 A cyclic graph where the **solver** proposes a solution and the **critic** evaluates it against the task rules. If rejected, the state routes back to the solver with feedback for a retry, up to `max_critic_iterations` (default 3). The critic is an LLM-based self-review and never sees the ground truth. For interactive domains the solver runs a tool-calling loop before each critique (`START -> solver [-> tools -> solver]* -> critic -> {solver | END}`); for non-interactive domains it is a single solve call per cycle.
 
 ### Level 3 — Adaptive System
-Extends Level 2B with **Tree-of-Thought (ToT)** branching and **Episodic Memory**. The **planner** retrieves relevant past episodes from a frozen memory bank, then generates `num_branches` (default 3) candidate solution approaches stored in `state["branches"]`. The **critic** scores each branch and commits the best to `state["selected_branch"]`. The **executor** carries out the selected branch (tool-calling loop for interactive domains, single call for logic). On exit the run is written to the memory bank. Role prompts (planner / critic / executor) are domain-agnostic defaults; domain owners can override via subclassing. The memory bank is built once in a pre-pass over a held-out population set, frozen, and committed as a read-only artifact — runs stay independent and reproducible. L3 diagnostics (`branch_count`, `mem_retrievals`, `mem_reuse_hits`) are written to `state["metadata"]` and persisted in `RunResult.state_metadata`.
+Extends Level 2B with **Tree-of-Thought (ToT)** branching and **Episodic Memory**. The **planner** generates `num_branches` (default 3) candidate solution approaches stored in `state["branches"]`, optionally primed with strategies retrieved from the episodic memory bank. The **critic** scores each branch and commits the best to `state["selected_branch"]`. The **executor** carries out the selected branch (tool-calling loop for interactive domains, single call for logic). On exit the run is appended to the memory bank. Role prompts (planner / critic / executor) are domain-agnostic defaults; domain owners can override via subclassing. The memory bank (`RecentSuccessMemory`) is **not** frozen: a fresh bank is created per `(domain, difficulty)` condition and written live after every run, so later runs in the same condition can be primed by earlier ones — runs within a condition are therefore not fully independent. Retrieval returns the top episodes for the matching domain/difficulty, accepted ones first. L3 diagnostics (`branch_count`, `mem_retrievals`, `mem_reuse_hits`) are written to `state["metadata"]` and persisted in `RunResult.state_metadata`.
 
 ## Domains
 
@@ -96,38 +96,45 @@ src/
 │   ├── level2a_planner_executor.py  # Linear: planner -> executor
 │   ├── level2b_solver_critic.py     # Cyclic: solver <-> critic up to max_critic_iterations
 │   ├── level3_adaptive.py           # ToT + episodic memory: planner -> critic -> executor
-│   └── memory.py                    # EpisodicMemory, NoOpMemory (stub until bank is built)
-└── domains/
-    ├── __init__.py                  # get_domain() factory
-    ├── base.py                      # BaseDomain ABC, Task/EvaluationResult models
-    ├── gridworld/
-    │   ├── domain.py                # GridworldDomain
-    │   ├── engine.py                # GridWorld simulation engine (4-level difficulty)
-    │   └── tools.py                 # LangChain tools: move_up/down/left/right
-    ├── logic_puzzles/
-    │   ├── domain.py                # LogicPuzzlesDomain
-    │   └── engine.py                # Puzzle loader, PINNED_*_IDS, parser, scorer
-    └── preprocessing/
-        └── gridworld.py             # Gridworld results -> common analysis schema
+│   └── memory.py                    # EpisodicMemory protocol, RecentSuccessMemory (live per-condition bank), NoOpMemory
+├── domains/
+│   ├── __init__.py                  # get_domain() factory
+│   ├── base.py                      # BaseDomain ABC, Task/EvaluationResult models
+│   ├── gridworld/
+│   │   ├── domain.py                # GridworldDomain
+│   │   ├── engine.py                # GridWorld simulation engine (4-level difficulty)
+│   │   └── tools.py                 # LangChain tools: move_up/down/left/right
+│   └── logic_puzzles/
+│       ├── domain.py                # LogicPuzzlesDomain
+│       └── engine.py                # Puzzle loader, PINNED_*_IDS, parser, scorer
+└── preprocessing/
+    └── gridworld.py                 # Gridworld results -> common analysis schema
 configs/
 ├── experiments.yaml                 # Default gridworld smoke-test matrix
-├── gridworld_final.yaml             # Full gridworld 4×4 sweep
+├── gridworld_final.yaml             # Full gridworld sweep
 ├── gridworld_pilot.yaml             # Gridworld pilot runs
 ├── gridworld_smoke.yaml             # Quick gridworld sanity check
-└── full_sweep_logic.yaml            # Logic puzzle full sweep (pre-K0; superseded by logic_final.yaml)
+├── logic_final_anchor.yaml          # Logic saturation anchors: easy (3×3) + medium (5×5), unlimited budget
+├── logic_final_main.yaml            # Logic discrimination tiers: hard (5×5 @4k) + extra_hard (5×5 @1.5k)
+├── logic_pilot.yaml                 # Logic pilot runs (grade/budget calibration)
+└── legacy/
+    └── full_sweep_logic.yaml        # Superseded early logic sweep
 scripts/
 ├── run_all.py                       # Run experiment matrix from YAML; resume-safe
 ├── run_experiment.py                # CLI: run a single condition
 ├── analyze_results.py               # Aggregate results, generate plots
-├── k0_pilot.py                      # K0 grade pilot (level2–4 vs budget)
-└── test_logic_pipeline.py           # Logic pipeline smoke test
-results/                             # git-ignored; populated by runs
-├── logic_final.jsonl                # Target: full logic 4×4 matrix (K5)
-└── results_gridworld.jsonl          # Target: full gridworld 4×4 matrix (B5)
+├── analyze_pilot.py                 # Pilot-result analysis
+├── k0_pilot.py                      # Grade-selection pilot (level2–4 vs budget)
+├── test_logic_pipeline.py           # Logic pipeline smoke test
+└── test_memory.py                   # Episodic-memory backend tests
+results/
+├── logic_final.jsonl                # Full logic 4-tier matrix
+├── gridworld_final.jsonl            # Full gridworld 4-tier matrix
+├── logic_pilot.jsonl                # Logic pilot results
+└── k0_pilot.jsonl                   # Grade-selection pilot results
 docs/
-├── build_data_roadmap.md            # Task breakdown and progress tracking
-├── roadmap.md                       # Execution roadmap (analysis phase onward)
-└── decisions.md                     # Key design decisions log
+├── task_description.md              # Course project brief
+└── draft.md                         # Initial project draft
 ```
 
 ## Setup & Installation
@@ -168,17 +175,18 @@ poetry run python scripts/run_experiment.py --architecture level1 --domain gridw
 ### Run the full experiment matrix
 
 ```bash
-poetry run python scripts/run_all.py --config configs/gridworld_final.yaml --output results/results_gridworld.jsonl
+poetry run python scripts/run_all.py --config configs/gridworld_final.yaml --output results/gridworld_final.jsonl
 ```
 
 Scoped by domain or architecture to avoid cross-partner interference:
 
 ```bash
-# Logic puzzles track (Kristóf)
-poetry run python scripts/run_all.py --config configs/logic_final.yaml --num-tasks 5 --output results/logic_final.jsonl
+# Logic puzzles track (Kristóf) — anchors (easy/medium) then discrimination tiers (hard/extra_hard); both append to the same file
+poetry run python scripts/run_all.py --config configs/logic_final_anchor.yaml --num-tasks 3 --output results/logic_final.jsonl
+poetry run python scripts/run_all.py --config configs/logic_final_main.yaml  --num-tasks 5 --output results/logic_final.jsonl
 
 # Gridworld track (Benedek)
-poetry run python scripts/run_all.py --config configs/gridworld_final.yaml --output results/results_gridworld.jsonl
+poetry run python scripts/run_all.py --config configs/gridworld_final.yaml --output results/gridworld_final.jsonl
 ```
 
 Runs are resume-safe — already-completed `(architecture, domain, difficulty, task_id, run_id, budget)` tuples are skipped on restart.
@@ -186,13 +194,13 @@ Runs are resume-safe — already-completed `(architecture, domain, difficulty, t
 ### Analyze results
 
 ```bash
-poetry run python scripts/analyze_results.py
+poetry run python scripts/analyze_results.py --input results/logic_final.jsonl --output-dir results/plots
 ```
 
 Or use the interactive notebook:
 
 ```bash
-poetry run jupyter notebook notebooks/puzzles_analysis.ipynb
+poetry run jupyter notebook notebooks/analysis.ipynb
 ```
 
 ## Evaluation Metrics
@@ -219,7 +227,7 @@ poetry run jupyter notebook notebooks/puzzles_analysis.ipynb
 
 ## Experimental Matrix
 
-4 architectures × 4 difficulty levels × 2 domains = 32 conditions. N=8 runs per condition (N=10 at extra_hard). Results written to `results/logic_final.jsonl` and `results/results_gridworld.jsonl`.
+4 architectures × 4 difficulty levels × 2 domains = 32 conditions. N=8 runs per condition (N=10 at extra_hard). Results written to `results/logic_final.jsonl` and `results/gridworld_final.jsonl`.
 
 ### Logic Puzzles
 
@@ -253,7 +261,9 @@ poetry run jupyter notebook notebooks/puzzles_analysis.ipynb
 
 | Phase | GenAI Tool Used | Validation Method |
 |-------|----------------|-------------------|
-| ... | ... | ... |
+| Code implementation | Claude Code | Every generated module was read, run, and checked against the unit/smoke tests and manual experiment runs before use. |
+| Code & report formatting | Claude Code | Reviewed all reformatted code and prose line-by-line to confirm meaning and structure were preserved. |
+| Architecture figures | Nano Banana 2 | Each generated diagram was manually checked against the implemented graph topology for accuracy. |
 
 ## Team & Contributions
 
@@ -276,13 +286,14 @@ Use `--config` to point at domain-specific YAML files so neither partner acciden
 
 ```bash
 # Kristóf — logic puzzles
-poetry run python scripts/run_all.py --config configs/logic_final.yaml --num-tasks 5 --output results/logic_final.jsonl
+poetry run python scripts/run_all.py --config configs/logic_final_anchor.yaml --num-tasks 3 --output results/logic_final.jsonl
+poetry run python scripts/run_all.py --config configs/logic_final_main.yaml  --num-tasks 5 --output results/logic_final.jsonl
 
 # Benedek — gridworld
-poetry run python scripts/run_all.py --config configs/gridworld_final.yaml --output results/results_gridworld.jsonl
+poetry run python scripts/run_all.py --config configs/gridworld_final.yaml --output results/gridworld_final.jsonl
 ```
 
-Both files write to the same common schema (see `docs/build_data_roadmap.md` § 5). The analysis notebook loads both and treats them identically.
+Both files write to the same common schema, so the analysis notebook loads both and treats them identically.
 
 ## References
 
