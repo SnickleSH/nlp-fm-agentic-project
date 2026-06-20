@@ -36,7 +36,7 @@ A single LLM call with no explicit planning or persistent memory. For interactiv
 A two-node linear pipeline. The **planner** generates a step-by-step strategy, and the **executor** carries it out sequentially. For gridworld, the executor runs a tool-calling loop to execute the plan with move actions.
 
 ### Level 2B — Solver + Critic
-A cyclic graph where the **solver** proposes a solution and the **critic** evaluates it against the task rules. If rejected, the state routes back to the solver with feedback for a retry, up to `max_critic_iterations` (default 3). The critic is an LLM-based self-review and never sees the ground truth. For interactive domains the solver runs a tool-calling loop before each critique (`START -> solver [-> tools -> solver]* -> critic -> {solver | END}`); for non-interactive domains it is a single solve call per cycle.
+A cyclic graph where the **solver** proposes a solution and the **critic** evaluates it against the task rules. If rejected, the state routes back to the solver with feedback for a retry, up to `max_critic_iterations` (set to **2** in all final experiment configs; the code default is 3, used only by the pilots). The critic is an LLM-based self-review and never sees the ground truth. For interactive domains the solver runs a tool-calling loop before each critique (`START -> solver [-> tools -> solver]* -> critic -> {solver | END}`); for non-interactive domains it is a single solve call per cycle.
 
 ### Level 3 — Adaptive System
 Extends Level 2B with **Tree-of-Thought (ToT)** branching and **Episodic Memory**. The **planner** generates `num_branches` (default 3) candidate solution approaches stored in `state["branches"]`, optionally primed with strategies retrieved from the episodic memory bank. The **critic** scores each branch and commits the best to `state["selected_branch"]`. The **executor** carries out the selected branch (tool-calling loop for interactive domains, single call for logic). On exit the run is appended to the memory bank. Role prompts (planner / critic / executor) are domain-agnostic defaults; domain owners can override via subclassing. The memory bank (`RecentSuccessMemory`) is **not** frozen: a fresh bank is created per `(domain, difficulty)` condition and written live after every run, so later runs in the same condition can be primed by earlier ones — runs within a condition are therefore not fully independent. Retrieval returns the top episodes for the matching domain/difficulty, accepted ones first. L3 diagnostics (`branch_count`, `mem_retrievals`, `mem_reuse_hits`) are written to `state["metadata"]` and persisted in `RunResult.state_metadata`.
@@ -73,12 +73,14 @@ Puzzles come from [`arg-tech/MysteryZebra`](https://huggingface.co/datasets/arg-
 
 Level3 is the discrimination zone: unlimited solves perfectly, budget=1500 clearly degrades, but without near-zero collapse (level4) that would prevent architecture-level differentiation. The same grade is used for both 3×3 and 5×5 so the internal puzzle grade is not a confound across difficulty levels.
 
-**Pinned puzzle IDs** (selection is independent of HuggingFace ordering):
+**Pinned puzzle IDs** (selection is independent of HuggingFace ordering). Each tier draws from a pool of five pinned IDs; the number actually used per tier is set by `--num-tasks` — 3 for the saturated easy/medium anchors, 5 for the hard/extra_hard discrimination tiers:
 
-| Difficulty | IDs |
-|------------|-----|
-| easy (3×3) | `Pt2_3x3_level3-0` … `Pt2_3x3_level3-4` |
-| medium / hard / extra_hard (5×5) | `Pt2_5x5_level3-0` … `Pt2_5x5_level3-4` |
+| Difficulty | Grid | Puzzles used |
+|------------|------|--------------|
+| easy | 3×3 | `Pt2_3x3_level3-0` … `-2` (3 of 5) |
+| medium | 5×5 | `Pt2_5x5_level3-0` … `-2` (3 of 5) |
+| hard | 5×5 | `Pt2_5x5_level3-0` … `-4` (5 of 5) |
+| extra_hard | 5×5 | `Pt2_5x5_level3-0` … `-4` (5 of 5) |
 
 ## Project Structure
 
@@ -229,14 +231,25 @@ poetry run jupyter notebook notebooks/analysis.ipynb
 
 4 architectures × 4 difficulty levels × 2 domains = 32 conditions. N=8 runs per condition (N=10 at extra_hard). Results written to `results/logic_final.jsonl` and `results/gridworld_final.jsonl`.
 
+Mean cell-score per condition below (95% CIs, eligible-N, and the efficiency/failure breakdowns are in the report — §5, Tables 9–13).
+
 ### Logic Puzzles
 
 | Architecture | easy (3×3 ∞) | medium (5×5 ∞) | hard (5×5 @4k) | extra_hard (5×5 @1.5k) |
 |---|---|---|---|---|
-| L1 Baseline | — | — | — | — |
-| L2A Planner+Executor | — | — | — | — |
-| L2B Solver+Critic | — | — | — | — |
-| L3 Adaptive (ToT+Mem) | — | — | — | — |
+| L1 Baseline | 1.00 | 1.00 | 0.84 | 0.50 |
+| L2A Planner+Executor | 1.00 | 1.00 | 0.91 | 0.77 |
+| L2B Solver+Critic | 1.00 | 1.00 | **0.96** | 0.55 |
+| L3 Adaptive (ToT+Mem) | 1.00 | 1.00 | 0.88 | 0.50 |
+
+### Gridworld
+
+| Architecture | easy (4×4) | medium (6×6) | hard (6×6 fog) | extra_hard (6×6 fog @500) |
+|---|---|---|---|---|
+| L1 Baseline | 1.00 | 1.00 | 0.96 | 0.81 |
+| L2A Planner+Executor | 0.98 | 1.00 | 0.94 | 0.69 |
+| L2B Solver+Critic | 1.00 | 0.98 | 0.93 | 0.87 |
+| L3 Adaptive (ToT+Mem) | 1.00 | 1.00 | **1.00** | **0.92** |
 
 ## Extending the Framework
 
