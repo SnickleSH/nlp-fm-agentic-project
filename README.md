@@ -194,7 +194,7 @@ Runs are resume-safe — already-completed `(architecture, domain, difficulty, t
 ### Analyze results
 
 ```bash
-poetry run python scripts/analyze_results.py --input results/logic_final.jsonl --output-dir results/plots
+poetry run python scripts/analyze_results.py --logic results/logic_final.jsonl --gridworld results/gridworld_final.jsonl --figdir figures
 ```
 
 Or use the interactive notebook:

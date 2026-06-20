@@ -69,8 +69,6 @@ def main():
 
         for name, fig in [
             (f"{domain}_capability", plots.plot_capability(df, domain)),
-            (f"{domain}_efficiency_tokens", plots.plot_efficiency(df, domain, "total_tokens")),
-            (f"{domain}_efficiency_calls", plots.plot_efficiency(df, domain, "num_llm_calls")),
             (f"{domain}_efficiency", plots.plot_efficiency_pair(df, domain)),
             (f"{domain}_failures", plots.plot_failure_stack(df, domain)),
             (f"{domain}_dispersion", plots.plot_dispersion(df, domain, "num_llm_calls")),

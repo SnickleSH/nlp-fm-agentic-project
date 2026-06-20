@@ -58,31 +58,6 @@ def plot_capability(df: pd.DataFrame, domain: str):
     return fig
 
 
-def plot_efficiency(df: pd.DataFrame, domain: str, value: str = "total_tokens"):
-    """Mean efficiency metric per architecture across the ladder (log y for tokens)."""
-    mat = efficiency_matrix(df, domain, value=value)
-    fig, ax = plt.subplots(figsize=(9, 5))
-    x = np.arange(len(LEVEL_ORDER))
-    for arch in ARCH_ORDER:
-        if arch not in mat.index:
-            continue
-        y = mat.loc[arch].reindex(LEVEL_ORDER).values.astype(float)
-        if np.all(np.isnan(y)):
-            continue
-        ax.plot(x, y, marker="o", label=ARCH_LABELS.get(arch, arch),
-                color=_ARCH_BAR_COLORS.get(arch))
-    ax.set_xticks(x)
-    ax.set_xticklabels(LEVEL_ORDER)
-    ax.set_ylabel(value)
-    if value == "total_tokens":
-        ax.set_yscale("log")
-    ax.set_title(f"Efficiency ({value}) — {domain}")
-    ax.legend(fontsize=8)
-    ax.grid(alpha=0.3)
-    fig.tight_layout()
-    return fig
-
-
 def plot_efficiency_pair(df: pd.DataFrame, domain: str):
     """Two panels side by side: total_tokens (log y) and num_llm_calls (linear),
     so the compute cost and the model-call overhead are read together."""
